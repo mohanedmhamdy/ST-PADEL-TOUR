@@ -6,7 +6,7 @@
 
 /* ST Padel Tour ranking podium */
 .st-rank-heading{text-align:center;margin:16px 0 34px}.st-rank-heading h2{font-size:clamp(22px,3vw,34px);margin-bottom:4px}.st-rank-heading p{color:#a8bed4;margin:0}.st-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;align-items:end;margin:20px 0 35px;direction:ltr}.st-podium-card{position:relative;direction:rtl;text-align:center;padding:34px 12px 24px;min-width:0;border-radius:20px;background:linear-gradient(155deg,#19364f,#071322 80%);border:2px solid var(--podium-color);box-shadow:0 0 26px var(--podium-glow),inset 0 0 25px var(--podium-glow);}.st-podium-1{--podium-color:#ffd04b;--podium-glow:#d69a293d;min-height:330px;background:linear-gradient(155deg,#443313,#0b1727 75%)}.st-podium-2{--podium-color:#b8d7f5;--podium-glow:#9bbfe633;min-height:302px}.st-podium-3{--podium-color:#eaa56c;--podium-glow:#d7844738;min-height:292px}.st-podium-crown{position:absolute;top:-36px;left:0;right:0;font-size:42px;color:var(--podium-color);text-shadow:0 0 12px var(--podium-color)}.st-podium-avatar{width:122px;height:122px;border-radius:50%;border:4px solid var(--podium-color);padding:3px;margin:0 auto 12px;box-shadow:0 0 20px var(--podium-glow)}.st-podium-avatar>img,.st-podium-avatar>span{width:100%!important;height:100%!important;border-radius:50%;object-fit:cover}.st-podium-medal{color:var(--podium-color);font-weight:800;font-size:14px}.st-podium-name{font-weight:900;font-size:clamp(17px,2.4vw,26px);overflow-wrap:anywhere;margin:7px 0}.st-podium-id{font-size:11px;color:#a8bed4;direction:ltr}.st-podium-points{margin-top:12px;border-top:1px solid #ffffff26;padding-top:9px;color:var(--podium-color);font-weight:bold}.st-podium-points strong{font-size:clamp(24px,3vw,38px)}.st-rank-rest{margin:28px 0 12px;color:#a8d2ff}@media(max-width:700px){.st-podium{gap:7px}.st-podium-card{padding:24px 5px 13px;border-radius:13px;min-height:230px}.st-podium-1{min-height:252px}.st-podium-2{min-height:235px}.st-podium-3{min-height:225px}.st-podium-avatar{width:clamp(60px,17vw,95px);height:clamp(60px,17vw,95px);border-width:2px}.st-podium-crown{font-size:29px;top:-27px}.st-podium-medal{font-size:11px}.st-podium-name{font-size:13px}.st-podium-points strong{font-size:23px}.st-podium-id{font-size:9px}}
-.st-live-tag{display:inline-flex;align-items:center;gap:5px;background:#7f1d1d;color:#fff;border:1px solid #ef4444;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:900;animation:stpulse 1.8s infinite}@keyframes stpulse{50%{box-shadow:0 0 0 5px #ef444425}}.st-avatar-lightbox{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:55px 15px 25px;cursor:zoom-out}.st-avatar-lightbox img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:8px;box-shadow:0 12px 50px #0009;cursor:default}.st-avatar-close{position:absolute;top:12px;right:16px;border:0;background:#1d334c;color:#fff;border-radius:50%;width:42px;height:42px;font-size:29px;line-height:1;padding:0;z-index:1}.st-product-gallery{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}.st-product-thumb{width:160px;border:1px solid var(--line);padding:7px;border-radius:12px}.st-product-thumb img{width:100%;height:125px;object-fit:cover;border-radius:8px}.st-product-thumb .st-form-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}.st-product-thumb button{font-size:11px;padding:5px 7px}</style></head><body><header><div class="wrap bar"><a class="logo" href="index.html" aria-label="العودة للرئيسية وتحديث الصفحة" title="العودة للرئيسية وتحديث الصفحة" style="color:inherit;text-decoration:none;cursor:pointer">ST <span>PADEL</span> TOUR</a><nav id="nav"></nav></div></header><section class="hero"><div class="wrap"><div class="kicker">ST OFFICIAL TOURNAMENTS</div><h1>كل نقطة بتفرق.<br><span style="color:#4ca1ff">كل بطولة بتتحسب.</span></h1><p>المنصة الرسمية لبطولات ST: الفرق، المجموعات، المباريات، خروج المغلوب وتصنيف اللاعبين.</p><div class="stats" id="stats"></div></div></section><main class="wrap" id="app"></main><footer class="footer"><div class="wrap">© ST Padel Tour · منصة بطولات ST فقط <span style="float:left">النتائج متصلة بقاعدة بيانات ST أونلاين</span></div></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script>
+.st-live-tag{display:inline-flex;align-items:center;gap:5px;background:#7f1d1d;color:#fff;border:1px solid #ef4444;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:900;animation:stpulse 1.8s infinite}@keyframes stpulse{50%{box-shadow:0 0 0 5px #ef444425}}.st-avatar-lightbox{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:55px 15px 25px;cursor:zoom-out}.st-avatar-lightbox img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:8px;box-shadow:0 12px 50px #0009;cursor:default}.st-avatar-close{position:absolute;top:12px;right:16px;border:0;background:#1d334c;color:#fff;border-radius:50%;width:42px;height:42px;font-size:29px;line-height:1;padding:0;z-index:1}.st-product-gallery{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}.st-product-thumb{width:160px;border:1px solid var(--line);padding:7px;border-radius:12px}.st-product-thumb img{width:100%;height:125px;object-fit:cover;border-radius:8px}.st-product-thumb .st-form-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}.st-product-thumb button{font-size:11px;padding:5px 7px}</style></head><body><div class="st-language-top" id="stLanguageTop"></div><header><div class="wrap bar"><a class="logo" href="index.html" aria-label="العودة للرئيسية وتحديث الصفحة" title="العودة للرئيسية وتحديث الصفحة" style="color:inherit;text-decoration:none;cursor:pointer">ST <span>PADEL</span> TOUR</a><nav id="nav"></nav></div></header><section class="hero"><div class="wrap"><div class="kicker">ST OFFICIAL TOURNAMENTS</div><h1>كل نقطة بتفرق.<br><span style="color:#4ca1ff">كل بطولة بتتحسب.</span></h1><p>المنصة الرسمية لبطولات ST: الفرق، المجموعات، المباريات، خروج المغلوب وتصنيف اللاعبين.</p><div class="stats" id="stats"></div></div></section><main class="wrap" id="app"></main><footer class="footer"><div class="wrap">© ST Padel Tour · منصة بطولات ST فقط <span style="float:left">النتائج متصلة بقاعدة بيانات ST أونلاين</span></div></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script>
 'use strict';
 /* ST visitor shortcut deterrent. Not a security boundary: browser tools remain accessible. */
 (function stVisitorShortcutGuard(){
@@ -556,4 +556,104 @@ async function stAddMedia(e){e.preventDefault();const ads=$('stMediaType').value
 async function stToggleMedia(type,id,active){const {error}=await cloud.from(type==='ads'?'st_ads':'st_sponsors').update({is_active:active}).eq('id',id);if(error)return alert(error.message);stRefresh('storeads')}
 function stRefresh(tab){stStore.adminLoaded[tab]=false;stStore.loaded=false;stLoadAdminTab(tab)}
 
+</script><style>
+/* Site-wide bilingual controls */
+.st-language-top{position:relative;z-index:10;display:flex;justify-content:flex-start;align-items:center;min-height:48px;padding:6px max(18px,calc((100vw - 1180px)/2));background:#06101e;border-bottom:1px solid #27425d}.st-global-language{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.st-global-language select{width:auto;min-width:110px;padding:7px 9px;font-size:13px}
+html[dir="ltr"] body{direction:ltr}
+html[dir="ltr"] th,html[dir="ltr"] td{text-align:left}
+html[dir="ltr"] .st-name-choice{text-align:left}
+html[dir="ltr"] .st-podium-card{direction:ltr}
+html[dir="ltr"] .st-podium-id{text-align:center}
+@media(max-width:760px){.st-global-language select{min-width:90px}}
+</style>
+<script>
+/* ST Padel Tour bilingual UI layer. Only translates known interface text;
+   tournament/player/product content is preserved as entered by admins. */
+(function(){
+'use strict';
+const D={
+'الرئيسية':'Home','البطولات':'Tournaments','التسجيل':'Registration','النتائج':'Results','التصنيف':'Rankings','المتجر':'Store','متابعة طلب':'Track Order','الإدارة':'Admin',
+'كل نقطة بتفرق.':'Every point matters.','كل بطولة بتتحسب.':'Every tournament counts.',
+'المنصة الرسمية لبطولات ST: الفرق، المجموعات، المباريات، خروج المغلوب وتصنيف اللاعبين.':'The official ST tournaments platform: teams, groups, matches, knockouts and player rankings.',
+'بطولة':'Tournaments','لاعب':'Players','فريق':'Teams','نتيجة معتمدة':'Confirmed results',
+'بطولات ST':'ST Tournaments','عرض كل البطولات ←':'View all tournaments','أفضل اللاعبين':'Top players','التصنيف الكامل':'Full rankings',
+'اشترك الآن':'Register now','تفاصيل البطولة ←':'Tournament details','مجدولة':'Scheduled','جارية':'In progress','منتهية':'Completed',
+'كل البطولات':'All tournaments','سجل فريقك في البطولة':'Register your team','نظام البطولة:':'Tournament format:','عدد الفرق:':'Teams:','المباريات:':'Matches:',
+'ترتيب المجموعات':'Group standings','جدول مباريات المجموعات':'Group fixtures','خروج المغلوب':'Knockout stage','مباريات البطولة':'Tournament matches',
+'القرعة لم تُنشر بعد':'Draw not published yet','تفاصيل المواجهات وجدول المباريات ستظهر بعد اعتماد الإدارة ونشر القرعة.':'Fixtures and match schedules will appear once the draw is approved and published.',
+'القرعة منشورة للجمهور':'Draw published','معاينة إدارية — القرعة غير منشورة':'Admin preview — draw unpublished',
+'المركز':'Rank','اللاعب':'Player','النقاط':'Points','المباريات':'Matches','الانتصارات':'Wins','الألقاب':'Titles',
+'لعب':'Played','فوز':'Wins','خسارة':'Losses','له':'For','عليه':'Against','الفارق':'Difference',
+'نتائج المباريات':'Match results','لا توجد نتائج مسجلة.':'No match results yet.','لا يوجد لاعبون في التصنيف بعد.':'No ranked players yet.',
+'تصنيف لاعبي ST Padel Tour':'ST Padel Tour Player Rankings','ترتيب اللاعبين حسب النقاط في جميع بطولات ST':'Players ranked by points earned across ST tournaments',
+'المركز الأول':'1st place','المركز الثاني':'2nd place','المركز الثالث':'3rd place','نقطة':'points','باقي الترتيب':'Remaining rankings',
+'ابحث عن لاعب...':'Search players...','تسجيل الدخول':'Log in','تسجيل الخروج':'Log out','دخول إدارة ST':'ST Admin Login',
+'البريد الإلكتروني':'Email address','كلمة المرور':'Password','لوحة إدارة ST':'ST Admin Dashboard',
+'اللاعبون':'Players','المحظورون':'Banned players','الفرق':'Teams','طلبات الدفع':'Payment requests','الجدول':'Schedule','الأبطال':'Champions','النسخ الاحتياطي':'Backup',
+'منتجات المتجر':'Store products','طلبات المتجر':'Store orders','إعدادات المتجر':'Store settings','الإعلانات والرعاة':'Ads & sponsors',
+'إضافة لاعب':'Add player','اسم اللاعب':'Player name','الاسم بالكامل':'Full name','إضافة اللاعب':'Add player','تحديث أرقام اللاعبين':'Refresh player phone numbers',
+'صورة البروفايل':'Profile picture','تعديل':'Edit','حذف':'Delete','نسخ ID':'Copy ID','حظر اللاعب':'Ban player','فك الحظر / تعديل':'Unban / Edit',
+'رقم مرتبط':'Linked phone','ربط رقم موثّق':'Link verified phone','رقم الموبايل:':'Mobile number:','غير مسجل':'Not registered',
+'إنشاء بطولة':'Create tournament','اسم البطولة':'Tournament name','التاريخ':'Date','نظام البطولة':'Tournament format','الحالة':'Status',
+'عدد جولات السويسري':'Swiss rounds','عدد الفرق المتوقع للمعاينة':'Expected teams for preview','رسوم اشتراك الفريق (جنيه)':'Team entry fee (EGP)',
+'حفظ البطولة':'Save tournament','تغيير النظام':'Change format','معاينة الخطة':'Preview plan','نشر القرعة':'Publish draw','إخفاء القرعة':'Hide draw',
+'تعديل الرسوم':'Edit fee','إضافة فريق إداريًا (لترحيل الفرق القديمة فقط)':'Add team manually (legacy data only)',
+'المجموعة (مثال A أو B)':'Group (e.g. A or B)','اللاعب الأول':'First player','اللاعب الثاني':'Second player','إضافة الفريق':'Add team',
+'استيراد الفرق القديمة دفعة واحدة':'Bulk import legacy teams','استيراد الفرق القديمة':'Import legacy teams','تحديد المجموعة':'Set group',
+'إعدادات وخطة البطولات':'Tournament setup and plan','إضافة نتيجة':'Add result','حفظ النتيجة':'Save result',
+'إضافة منتج':'Add product','منتجات ST Store':'ST Store Products','اسم المنتج بالعربي':'Product name (Arabic)','القسم':'Category',
+'السعر بالجنيه':'Price (EGP)','سعر العرض (اختياري)':'Sale price (optional)','وصف عربي':'Arabic description',
+'صور المنتج (اختياري، حتى 5 ميجابايت للصورة)':'Product images (optional, up to 5 MB per image)',
+'يمكنك رفع الصور أثناء إضافة المنتج أو بعد حفظه.':'You can upload images when creating a product or afterward.',
+'المنتجات الجديدة تبدأ غير منشورة. ارفع الصور بعد حفظ المنتج، وأضف المخزون قبل النشر.':'New products start unpublished. Upload images and add stock before publishing.',
+'منشور':'Published','مخفي':'Hidden','إخفاء':'Hide','نشر':'Publish','إضافة مقاس/لون ومخزون':'Add size/color and stock',
+'إضافة صور':'Add images','الرئيسية':'Home','اجعلها رئيسية':'Set as main image','بدون مقاس':'No size','بدون لون':'No color',
+'محجوز':'reserved','لم تتم إضافة مخزون':'No stock added','جار التحميل أو لا توجد منتجات.':'Loading or no products found.',
+'جار تحميل المنتجات...':'Loading products...','لا توجد منتجات منشورة حاليًا.':'No published products yet.',
+'متجر ST':'ST Store','الشراء قريبًا':'Checkout coming soon','لا توجد خيارات متاحة':'No variants available',
+'إعدادات ST Store':'ST Store Settings','اسم مستلم InstaPay':'InstaPay recipient name','عنوان InstaPay':'InstaPay address',
+'عنوان الاستلام بالعربي':'Pickup address (Arabic)','تفعيل الاستلام من المقر':'Enable local pickup','تفعيل المتجر (بعد الاختبارات فقط)':'Enable store (only after testing)',
+'حفظ الإعدادات':'Save settings','جار تحميل الإعدادات...':'Loading settings...','الشحن للمحافظات':'Governorate shipping',
+'مفعّل':'Enabled','غير مفعّل':'Disabled','تعطيل':'Disable','تفعيل':'Enable',
+'الإعلانات والرعاة':'Ads & sponsors','النوع':'Type','إعلان':'Ad','راعٍ':'Sponsor','الاسم أو العنوان':'Name or title',
+'مسار الصورة داخل st-site-media':'Image path in st-site-media','رابط خارجي HTTPS (اختياري)':'External HTTPS link (optional)',
+'إضافة (غير مفعل)':'Add (inactive)','الإعلانات':'Ads','الرعاة':'Sponsors','لا توجد إعلانات.':'No ads yet.','لا يوجد رعاة.':'No sponsors yet.',
+'المتجر قيد التجهيز. عرض المنتجات متاح، والشراء هيتفعّل بعد اختبار الدفع ورفع الإيصال.':'Store is under preparation. Products are visible; checkout will open after payment and receipt testing.',
+'التعديلات تُحفظ على Supabase، ويجب التأكد من تفعيل صلاحيات الإدارة وقواعد الحماية.':'Changes are saved to Supabase. Ensure admin permissions and security rules are enabled.',
+'المشاهدون يمكنهم متابعة النتائج بدون حساب. الإدارة فقط تتطلب حسابًا مصرحًا به في Supabase.':'Visitors can view results without an account. Admin access requires an authorized Supabase account.',
+'النتائج متصلة بقاعدة بيانات ST أونلاين':'Results are connected to the ST online database',
+'منصة بطولات ST فقط':'ST tournaments platform',
+'لا توجد بطولات.':'No tournaments yet.','لا توجد فرق.':'No teams yet.','لا يوجد لاعبون.':'No players yet.',
+'الجولة':'Round','المجموعة':'Group','نهائي المجموعة':'Group final','نصف النهائي':'Semifinal','ربع النهائي':'Quarterfinal',
+'النهائي':'Final','مجموعات':'Groups','بانتظار النتيجة':'Awaiting result','تم التسجيل':'Result recorded',
+'تعديل':'Edit','حفظ':'Save','إلغاء':'Cancel','تأكيد':'Confirm','موافقة':'Approve','رفض':'Reject','تحديث':'Refresh',
+'ج.م':'EGP','العربية':'Arabic','English':'English'
+};
+const rules=[
+ [/^بطولة (\d+)$/,'$1 tournaments'],[/^(\d+) فريق$/,'$1 teams'],[/^(\d+) مباراة$/,'$1 matches'],
+ [/^المجموعة (.+)$/,'Group $1'],[/^الجولة (\d+)$/,'Round $1'],[/^(\d+) نقطة$/,'$1 points'],
+ [/^عدد الفرق: (\d+)$/,'Teams: $1'],[/^المباريات: (\d+)$/,'Matches: $1'],
+ [/^اللاعبون \((\d+)\)$/,'Players ($1)'],[/^الفرق \((\d+)\)$/,'Teams ($1)']
+];
+function translateValue(value){const trim=value.trim();if(!trim)return value;let out=D[trim];if(out===undefined){for(const [re,replacement] of rules){if(re.test(trim)){out=trim.replace(re,replacement);break}}}
+ if(out===undefined)return value;
+ return value.slice(0,value.indexOf(trim))+out+value.slice(value.indexOf(trim)+trim.length);
+}
+const originals=new WeakMap();
+function apply(){const en=stStore.language==='en';document.documentElement.lang=en?'en':'ar';document.documentElement.dir=en?'ltr':'rtl';
+ const select=document.getElementById('stGlobalLang');if(select&&select.value!==stStore.language)select.value=stStore.language;
+ const root=document.body;if(!root)return;
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){const parent=n.parentElement;if(!parent||parent.closest('script,style,textarea,option,code,pre,[contenteditable="true"]'))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});
+ let node;while(node=walker.nextNode()){const original=originals.get(node)??node.nodeValue;if(!originals.has(node))originals.set(node,original);const result=en?translateValue(original):original;if(node.nodeValue!==result)node.nodeValue=result;}
+ root.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el=>{if(!el.dataset.stOriginalPlaceholder)el.dataset.stOriginalPlaceholder=el.getAttribute('placeholder');const source=el.dataset.stOriginalPlaceholder;const result=en?translateValue(source):source;if(el.getAttribute('placeholder')!==result)el.setAttribute('placeholder',result)});
+ root.querySelectorAll('select option').forEach(el=>{if(!el.dataset.stOriginalLabel)el.dataset.stOriginalLabel=el.textContent;const source=el.dataset.stOriginalLabel;const result=en?translateValue(source):source;if(el.textContent!==result)el.textContent=result});
+}
+function installControl(){const bar=document.getElementById('stLanguageTop');if(!bar||document.getElementById('stGlobalLang'))return;const wrap=document.createElement('div');wrap.className='st-global-language';wrap.innerHTML='<label for="stGlobalLang" style="margin:0;color:#a8bed4">🌐</label><select id="stGlobalLang" aria-label="Website language"><option value="ar">العربية</option><option value="en">English</option></select>';bar.appendChild(wrap);wrap.querySelector('select').value=stStore.language;wrap.querySelector('select').addEventListener('change',e=>stSetLanguage(e.target.value));}
+let queued=false;function queue(){if(queued)return;queued=true;queueMicrotask(()=>{queued=false;installControl();apply()})}
+const originalSetter=stSetLanguage;stSetLanguage=function(v){originalSetter(v==='en'?'en':'ar');queue()};
+const originalRender=render;render=function(...args){const result=originalRender.apply(this,args);queue();return result};
+const observer=new MutationObserver(queue);observer.observe(document.body,{subtree:true,childList:true});
+installControl();queue();
+})();
 </script></body></html>
