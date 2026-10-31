@@ -6,7 +6,19 @@
 
 /* ST Padel Tour ranking podium */
 .st-rank-heading{text-align:center;margin:16px 0 34px}.st-rank-heading h2{font-size:clamp(22px,3vw,34px);margin-bottom:4px}.st-rank-heading p{color:#a8bed4;margin:0}.st-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;align-items:end;margin:20px 0 35px;direction:ltr}.st-podium-card{position:relative;direction:rtl;text-align:center;padding:34px 12px 24px;min-width:0;border-radius:20px;background:linear-gradient(155deg,#19364f,#071322 80%);border:2px solid var(--podium-color);box-shadow:0 0 26px var(--podium-glow),inset 0 0 25px var(--podium-glow);}.st-podium-1{--podium-color:#ffd04b;--podium-glow:#d69a293d;min-height:330px;background:linear-gradient(155deg,#443313,#0b1727 75%)}.st-podium-2{--podium-color:#b8d7f5;--podium-glow:#9bbfe633;min-height:302px}.st-podium-3{--podium-color:#eaa56c;--podium-glow:#d7844738;min-height:292px}.st-podium-crown{position:absolute;top:-36px;left:0;right:0;font-size:42px;color:var(--podium-color);text-shadow:0 0 12px var(--podium-color)}.st-podium-avatar{width:122px;height:122px;border-radius:50%;border:4px solid var(--podium-color);padding:3px;margin:0 auto 12px;box-shadow:0 0 20px var(--podium-glow)}.st-podium-avatar>img,.st-podium-avatar>span{width:100%!important;height:100%!important;border-radius:50%;object-fit:cover}.st-podium-medal{color:var(--podium-color);font-weight:800;font-size:14px}.st-podium-name{font-weight:900;font-size:clamp(17px,2.4vw,26px);overflow-wrap:anywhere;margin:7px 0}.st-podium-id{font-size:11px;color:#a8bed4;direction:ltr}.st-podium-points{margin-top:12px;border-top:1px solid #ffffff26;padding-top:9px;color:var(--podium-color);font-weight:bold}.st-podium-points strong{font-size:clamp(24px,3vw,38px)}.st-rank-rest{margin:28px 0 12px;color:#a8d2ff}@media(max-width:700px){.st-podium{gap:7px}.st-podium-card{padding:24px 5px 13px;border-radius:13px;min-height:230px}.st-podium-1{min-height:252px}.st-podium-2{min-height:235px}.st-podium-3{min-height:225px}.st-podium-avatar{width:clamp(60px,17vw,95px);height:clamp(60px,17vw,95px);border-width:2px}.st-podium-crown{font-size:29px;top:-27px}.st-podium-medal{font-size:11px}.st-podium-name{font-size:13px}.st-podium-points strong{font-size:23px}.st-podium-id{font-size:9px}}
-.st-live-tag{display:inline-flex;align-items:center;gap:5px;background:#7f1d1d;color:#fff;border:1px solid #ef4444;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:900;animation:stpulse 1.8s infinite}@keyframes stpulse{50%{box-shadow:0 0 0 5px #ef444425}}.st-avatar-lightbox{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:55px 15px 25px;cursor:zoom-out}.st-avatar-lightbox img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:8px;box-shadow:0 12px 50px #0009;cursor:default}.st-avatar-close{position:absolute;top:12px;right:16px;border:0;background:#1d334c;color:#fff;border-radius:50%;width:42px;height:42px;font-size:29px;line-height:1;padding:0;z-index:1}.st-product-gallery{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}.st-product-thumb{width:160px;border:1px solid var(--line);padding:7px;border-radius:12px}.st-product-thumb img{width:100%;height:125px;object-fit:cover;border-radius:8px}.st-product-thumb .st-form-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}.st-product-thumb button{font-size:11px;padding:5px 7px}</style></head><body><div class="st-language-top" id="stLanguageTop"></div><header><div class="wrap bar"><a class="logo" href="index.html" aria-label="العودة للرئيسية وتحديث الصفحة" title="العودة للرئيسية وتحديث الصفحة" style="color:inherit;text-decoration:none;cursor:pointer">ST <span>PADEL</span> TOUR</a><nav id="nav"></nav></div></header><section class="hero"><div class="wrap"><div class="kicker">ST OFFICIAL TOURNAMENTS</div><h1>كل نقطة بتفرق.<br><span style="color:#4ca1ff">كل بطولة بتتحسب.</span></h1><p>المنصة الرسمية لبطولات ST: الفرق، المجموعات، المباريات، خروج المغلوب وتصنيف اللاعبين.</p><div class="stats" id="stats"></div></div></section><main class="wrap" id="app"></main><footer class="footer"><div class="wrap">© ST Padel Tour · منصة بطولات ST فقط <span style="float:left">النتائج متصلة بقاعدة بيانات ST أونلاين</span></div></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script>
+.st-live-tag{display:inline-flex;align-items:center;gap:5px;background:#7f1d1d;color:#fff;border:1px solid #ef4444;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:900;animation:stpulse 1.8s infinite}@keyframes stpulse{50%{box-shadow:0 0 0 5px #ef444425}}.st-avatar-lightbox{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:55px 15px 25px;cursor:zoom-out}.st-avatar-lightbox img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:8px;box-shadow:0 12px 50px #0009;cursor:default}.st-avatar-close{position:absolute;top:12px;right:16px;border:0;background:#1d334c;color:#fff;border-radius:50%;width:42px;height:42px;font-size:29px;line-height:1;padding:0;z-index:1}.st-product-gallery{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}.st-product-thumb{width:160px;border:1px solid var(--line);padding:7px;border-radius:12px}.st-product-thumb img{width:100%;height:125px;object-fit:cover;border-radius:8px}.st-product-thumb .st-form-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}.st-product-thumb button{font-size:11px;padding:5px 7px}
+/* Public sponsors footer on every site page */
+.st-sponsors-public{margin:0 0 26px;padding:22px 12px 26px;border-bottom:1px solid var(--line);text-align:center}
+.st-sponsors-public[hidden]{display:none!important}
+.st-sponsors-public h3{font-size:19px;color:#dcecff;margin:0 0 17px}
+.st-sponsors-logos{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px}
+.st-sponsor-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-width:140px;max-width:210px;min-height:116px;padding:14px;background:#10243a;border:1px solid #315371;border-radius:14px;color:#fff;text-decoration:none}
+.st-sponsor-item img{display:block;width:155px;height:75px;max-width:100%;object-fit:contain}
+.st-sponsor-item span{font-size:12px;color:#c5d9ee;overflow-wrap:anywhere}
+a.st-sponsor-item:hover{border-color:#278bff;background:#173454}
+
+.st-ads-public{margin:0 0 26px;padding:20px 12px 26px;border-bottom:1px solid var(--line);text-align:center}.st-ads-public[hidden]{display:none!important}.st-ads-public h3{font-size:19px;color:#dcecff;margin:0 0 14px}.st-ads-frame{position:relative;max-width:820px;margin:auto;overflow:hidden;border-radius:16px;border:1px solid #315f87;background:#081b30}.st-ads-slide{display:none;text-decoration:none;color:#fff}.st-ads-slide.st-active{display:block}.st-ads-slide img{display:block;width:100%;max-height:300px;object-fit:contain;background:#091727}.st-ads-slide span{display:block;padding:7px 12px;font-weight:bold}.st-ads-dots{display:flex;justify-content:center;gap:8px;margin-top:11px}.st-ads-dots button{width:10px;height:10px;border-radius:50%;padding:0;background:#45637f;border:0}.st-ads-dots button.st-active{background:#53a4ff;width:23px;border-radius:10px}
+</style></head><body><div class="st-language-top" id="stLanguageTop"></div><header><div class="wrap bar"><a class="logo" href="index.html" aria-label="العودة للرئيسية وتحديث الصفحة" title="العودة للرئيسية وتحديث الصفحة" style="color:inherit;text-decoration:none;cursor:pointer">ST <span>PADEL</span> TOUR</a><nav id="nav"></nav></div></header><section class="hero"><div class="wrap"><div class="kicker">ST OFFICIAL TOURNAMENTS</div><h1>كل نقطة بتفرق.<br><span style="color:#4ca1ff">كل بطولة بتتحسب.</span></h1><p>المنصة الرسمية لبطولات ST: الفرق، المجموعات، المباريات، خروج المغلوب وتصنيف اللاعبين.</p><div class="stats" id="stats"></div></div></section><main class="wrap" id="app"></main><footer class="footer"><div class="wrap"><section id="stPublicAds" class="st-ads-public" aria-label="إعلانات ST Padel Tour" hidden></section><section id="stPublicSponsors" class="st-sponsors-public" aria-label="رعاة ST Padel Tour" hidden></section>© ST Padel Tour · منصة بطولات ST فقط <span style="float:left">النتائج متصلة بقاعدة بيانات ST أونلاين</span></div></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script>
 'use strict';
 /* ST visitor shortcut deterrent. Not a security boundary: browser tools remain accessible. */
 (function stVisitorShortcutGuard(){
@@ -653,6 +665,69 @@ function bulkImportTeams(e){e.preventDefault();if(!adminSession)return alert('س
    until a trusted receipt-upload endpoint is deployed and verified. */
 const stStore={products:[],variants:[],images:[],shipping:[],settings:null,orders:[],ads:[],sponsors:[],loaded:false,loading:false,adminLoaded:{},language:localStorage.getItem('st_store_lang')==='en'?'en':'ar'};
 const stT=(ar,en)=>stStore.language==='en'?en:ar;
+/* Sponsors are loaded independently of admin forms to avoid wiping in-progress edits. */
+let stPublicSponsorsRequest=null;
+async function stLoadPublicSponsors(){
+ if(!cloud)return;
+ if(stPublicSponsorsRequest)return stPublicSponsorsRequest;
+ stPublicSponsorsRequest=(async()=>{
+  try{
+   const {data,error}=await cloud.from('st_sponsors').select('name,logo_path,website_url,is_active,sort_order').eq('is_active',true).order('sort_order');
+   if(error)throw error;
+   stRenderPublicSponsors(data||[]);
+  }catch(err){console.warn('Sponsors unavailable:',err.message||err);stRenderPublicSponsors([])}
+ })().finally(()=>{stPublicSponsorsRequest=null});
+ return stPublicSponsorsRequest;
+}
+function stRenderPublicSponsors(items){
+ const host=document.getElementById('stPublicSponsors');if(!host)return;
+ const valid=items.filter(s=>s&&s.is_active&&s.name&&s.logo_path);
+ if(!valid.length){host.hidden=true;host.innerHTML='';return}
+ const en=stStore.language==='en';
+ host.innerHTML='<h3>'+ (en?'ST Padel Tour Sponsors':'رعاة ST Padel Tour')+'</h3><div class="st-sponsors-logos">'+valid.map(s=>{
+  const image=esc(stSafeImage('st-site-media',s.logo_path));
+  const name=esc(s.name);
+  const href=typeof s.website_url==='string'&&/^https:\/\/[^\s]+$/i.test(s.website_url)?s.website_url:null;
+  const content='<img src="'+image+'" alt="'+name+'" loading="lazy"><span>'+name+'</span>';
+  return href?'<a class="st-sponsor-item" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">'+content+'</a>':'<div class="st-sponsor-item">'+content+'</div>';
+ }).join('')+'</div>';
+ host.hidden=false;
+}
+
+/* Public advertising carousel; isolated from admin form and store data. */
+let stPublicAdsRequest=null,stPublicAdsItems=[],stPublicAdsIndex=0,stPublicAdsTimer=null;
+async function stLoadPublicAds(){
+ if(!cloud)return;
+ if(stPublicAdsRequest)return stPublicAdsRequest;
+ stPublicAdsRequest=(async()=>{
+  try{
+   const {data,error}=await cloud.from('st_ads').select('title_ar,image_path,target_url,is_active,sort_order').eq('is_active',true).order('sort_order');
+   if(error)throw error;
+   stPublicAdsItems=(data||[]).filter(a=>a&&a.is_active&&a.title_ar&&a.image_path);
+  }catch(err){console.warn('Ads unavailable:',err.message||err);stPublicAdsItems=[];}
+  stPublicAdsIndex=0;stRenderPublicAds();
+ })().finally(()=>{stPublicAdsRequest=null});
+ return stPublicAdsRequest;
+}
+function stRenderPublicAds(){
+ const host=document.getElementById('stPublicAds');if(!host)return;
+ if(stPublicAdsTimer){clearInterval(stPublicAdsTimer);stPublicAdsTimer=null;}
+ if(!stPublicAdsItems.length){host.hidden=true;host.innerHTML='';return;}
+ const en=stStore.language==='en';
+ host.innerHTML='<h3>'+(en?'ST Padel Tour Advertisements':'إعلانات ST Padel Tour')+'</h3><div class="st-ads-frame">'+stPublicAdsItems.map((a,i)=>{
+  const img=esc(stSafeImage('st-site-media',a.image_path)),title=esc(a.title_ar);
+  const content='<img src="'+img+'" alt="'+title+'" loading="lazy"><span>'+title+'</span>';
+  const url=typeof a.target_url==='string'&&/^https:\/\/[^\s]+$/i.test(a.target_url)?a.target_url:null;
+  return url?'<a class="st-ads-slide" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+content+'</a>':'<div class="st-ads-slide">'+content+'</div>';
+ }).join('')+'</div><div class="st-ads-dots">'+stPublicAdsItems.map((_,i)=>'<button type="button" aria-label="إعلان '+(i+1)+'" onclick="stShowPublicAd('+i+')"></button>').join('')+'</div>';
+ host.hidden=false;stShowPublicAd(0);
+ if(stPublicAdsItems.length>1)stPublicAdsTimer=setInterval(()=>{if(!document.hidden)stShowPublicAd((stPublicAdsIndex+1)%stPublicAdsItems.length)},5000);
+}
+function stShowPublicAd(i){
+ if(!stPublicAdsItems.length)return;stPublicAdsIndex=((i%stPublicAdsItems.length)+stPublicAdsItems.length)%stPublicAdsItems.length;
+ document.querySelectorAll('#stPublicAds .st-ads-slide').forEach((el,n)=>el.classList.toggle('st-active',n===stPublicAdsIndex));
+ document.querySelectorAll('#stPublicAds .st-ads-dots button').forEach((el,n)=>el.classList.toggle('st-active',n===stPublicAdsIndex));
+}
 const stMoney=n=>Number(n||0).toLocaleString(stStore.language==='en'?'en-EG':'ar-EG')+' '+stT('ج.م','EGP');
 const stSafeImage=(bucket,path)=>{if(!path||!cloud)return '';return cloud.storage.from(bucket).getPublicUrl(path).data.publicUrl};
 function stSetLanguage(v){stStore.language=v;localStorage.setItem('st_store_lang',v);render()}
@@ -731,8 +806,8 @@ async function stEditShipping(id){const x=stStore.shipping.find(x=>x.id===id);if
 function stAdminAds(){return `<h3>الإعلانات والرعاة</h3><p class="note">اختار صورة من جهازك وسيتم رفعها إلى مساحة st-site-media تلقائيًا عند الإضافة. ويمكنك استخدام مسار صورة مرفوعة مسبقًا بدلًا من ذلك.</p><div class="card"><form class="formgrid" onsubmit="stAddMedia(event)"><div><label>النوع</label><select id="stMediaType"><option value="ads">إعلان</option><option value="sponsors">راعٍ</option></select></div><div><label>الاسم أو العنوان</label><input id="stMediaTitle" required></div><div><label>اختيار صورة من الجهاز (PNG / JPG / WEBP، حتى 5 ميجابايت)</label><input id="stMediaFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="stMediaFileChanged()"></div><div><label>أو مسار صورة موجودة داخل st-site-media</label><input id="stMediaPath" placeholder="sponsors/logo.png"></div><div><label>رابط خارجي HTTPS (اختياري)</label><input id="stMediaUrl" type="url" placeholder="https://example.com"></div><div class="field wide" id="stMediaPreview" style="display:none"><img id="stMediaPreviewImage" alt="معاينة صورة الراعي" style="max-height:180px;max-width:100%;object-fit:contain;border-radius:10px"></div><div class="field wide"><button id="stMediaSubmit" type="submit" class="primary">رفع الصورة وإضافة (غير مفعل)</button><p id="stMediaStatus" class="mini" role="status"></p></div></form></div><h3 style="margin-top:20px">الإعلانات</h3>${stStore.ads.map(a=>`<div class="match"><b>${esc(a.title_ar)}</b><span>${a.is_active?'مفعّل':'غير مفعّل'}</span><button onclick="stToggleMedia('ads','${a.id}',${!a.is_active})">${a.is_active?'تعطيل':'تفعيل'}</button></div>`).join('')||'<div class="empty">لا توجد إعلانات.</div>'}<h3>الرعاة</h3>${stStore.sponsors.map(a=>`<div class="match"><b>${esc(a.name)}</b><span>${a.is_active?'مفعّل':'غير مفعّل'}</span><button onclick="stToggleMedia('sponsors','${a.id}',${!a.is_active})">${a.is_active?'تعطيل':'تفعيل'}</button></div>`).join('')||'<div class="empty">لا يوجد رعاة.</div>'}`}
 function stMediaFileChanged(){const f=$('stMediaFile')?.files?.[0],preview=$('stMediaPreview'),img=$('stMediaPreviewImage');if(!preview||!img)return;if(!f){preview.style.display='none';img.removeAttribute('src');return;}if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>5*1024*1024||!f.size){alert('اختار صورة PNG أو JPG أو WEBP بحجم لا يتجاوز 5 ميجابايت');$('stMediaFile').value='';preview.style.display='none';return;}const reader=new FileReader();reader.onload=()=>{if($('stMediaPreviewImage')){$('stMediaPreviewImage').src=reader.result;$('stMediaPreview').style.display='block';}};reader.readAsDataURL(f);}
 let stMediaSaving=false;
-async function stAddMedia(e){e.preventDefault();if(stMediaSaving)return;if(!adminSession||!cloud)return alert('سجّل الدخول للإدارة أولًا');const ads=$('stMediaType').value==='ads',title=$('stMediaTitle').value.trim(),file=$('stMediaFile')?.files?.[0],manualPath=$('stMediaPath').value.trim(),url=$('stMediaUrl').value.trim(),btn=$('stMediaSubmit'),status=$('stMediaStatus');if(!title)return alert('اكتب اسم الراعي أو الإعلان');if(!file&&!manualPath)return alert('اختار صورة من جهازك أو اكتب مسار صورة موجودة');if(url&&!/^https:\/\/[^\s]+$/i.test(url))return alert('رابط الراعي لازم يبدأ بـ https://');if(file&&(!['image/png','image/jpeg','image/webp'].includes(file.type)||!file.size||file.size>5*1024*1024))return alert('نوع أو حجم الصورة غير مسموح');stMediaSaving=true;btn.disabled=true;let path=manualPath,uploaded=false;try{if(file){const ext=({'image/png':'png','image/jpeg':'jpg','image/webp':'webp'})[file.type];path=(ads?'ads/':'sponsors/')+crypto.randomUUID()+'.'+ext;status.textContent='جارٍ رفع الصورة...';const upload=await cloud.storage.from('st-site-media').upload(path,file,{contentType:file.type,cacheControl:'3600',upsert:false});if(upload.error)throw Error('فشل رفع الصورة: '+upload.error.message+' — تأكد من صلاحيات رفع الصور على st-site-media');uploaded=true;}status.textContent='جارٍ حفظ بيانات الراعي...';const data=ads?{title_ar:title,image_path:path,target_url:url||null,is_active:false}:{name:title,logo_path:path,website_url:url||null,is_active:false};const {error}=await cloud.from(ads?'st_ads':'st_sponsors').insert(data);if(error)throw Error('تعذر حفظ بيانات الراعي: '+error.message);status.textContent='تمت الإضافة بنجاح. فعّل الراعي من القائمة أدناه.';stRefresh('storeads');}catch(err){status.textContent=err.message||String(err);alert(status.textContent+(uploaded?'\nتم رفع الصورة لكن لم تُحفظ بيانات الراعي. احتفظ بمسار الصورة: '+path:''));if(uploaded&&$('stMediaPath'))$('stMediaPath').value=path;}finally{stMediaSaving=false;if($('stMediaSubmit'))$('stMediaSubmit').disabled=false;}}
-async function stToggleMedia(type,id,active){const {error}=await cloud.from(type==='ads'?'st_ads':'st_sponsors').update({is_active:active}).eq('id',id);if(error)return alert(error.message);stRefresh('storeads')}
+async function stAddMedia(e){e.preventDefault();if(stMediaSaving)return;if(!adminSession||!cloud)return alert('سجّل الدخول للإدارة أولًا');const ads=$('stMediaType').value==='ads',title=$('stMediaTitle').value.trim(),file=$('stMediaFile')?.files?.[0],manualPath=$('stMediaPath').value.trim(),url=$('stMediaUrl').value.trim(),btn=$('stMediaSubmit'),status=$('stMediaStatus');if(!title)return alert('اكتب اسم الراعي أو الإعلان');if(!file&&!manualPath)return alert('اختار صورة من جهازك أو اكتب مسار صورة موجودة');if(url&&!/^https:\/\/[^\s]+$/i.test(url))return alert('رابط الراعي لازم يبدأ بـ https://');if(file&&(!['image/png','image/jpeg','image/webp'].includes(file.type)||!file.size||file.size>5*1024*1024))return alert('نوع أو حجم الصورة غير مسموح');stMediaSaving=true;btn.disabled=true;let path=manualPath,uploaded=false;try{if(file){const ext=({'image/png':'png','image/jpeg':'jpg','image/webp':'webp'})[file.type];path=(ads?'ads/':'sponsors/')+crypto.randomUUID()+'.'+ext;status.textContent='جارٍ رفع الصورة...';const upload=await cloud.storage.from('st-site-media').upload(path,file,{contentType:file.type,cacheControl:'3600',upsert:false});if(upload.error)throw Error('فشل رفع الصورة: '+upload.error.message+' — تأكد من صلاحيات رفع الصور على st-site-media');uploaded=true;}status.textContent='جارٍ حفظ بيانات الراعي...';const data=ads?{title_ar:title,image_path:path,target_url:url||null,is_active:false}:{name:title,logo_path:path,website_url:url||null,is_active:false};const {error}=await cloud.from(ads?'st_ads':'st_sponsors').insert(data);if(error)throw Error('تعذر حفظ بيانات الراعي: '+error.message);status.textContent='تمت الإضافة بنجاح. فعّل الراعي من القائمة أدناه.';stRefresh('storeads');stLoadPublicSponsors();stLoadPublicAds();}catch(err){status.textContent=err.message||String(err);alert(status.textContent+(uploaded?'\nتم رفع الصورة لكن لم تُحفظ بيانات الراعي. احتفظ بمسار الصورة: '+path:''));if(uploaded&&$('stMediaPath'))$('stMediaPath').value=path;}finally{stMediaSaving=false;if($('stMediaSubmit'))$('stMediaSubmit').disabled=false;}}
+async function stToggleMedia(type,id,active){const {error}=await cloud.from(type==='ads'?'st_ads':'st_sponsors').update({is_active:active}).eq('id',id);if(error)return alert(error.message);stRefresh('storeads');stLoadPublicSponsors()}
 function stRefresh(tab){stStore.adminLoaded[tab]=false;stStore.loaded=false;stLoadAdminTab(tab)}
 
 </script><style>
@@ -835,4 +910,6 @@ const originalRender=render;render=function(...args){const result=originalRender
 const observer=new MutationObserver(queue);observer.observe(document.body,{subtree:true,childList:true});
 installControl();queue();
 })();
+
+window.addEventListener('load',()=>{stLoadPublicSponsors();stLoadPublicAds();});
 </script></body></html>
