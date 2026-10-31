@@ -107,6 +107,949 @@ function stRestoreMediaDraft(draft){
  if(draft.fileInput?.files?.length)stMediaFileChanged();
  if(draft.focusId){const el=document.getElementById(draft.focusId);if(el){el.focus({preventScroll:true});if(draft.selection&&typeof el.setSelectionRange==='function')try{el.setSelectionRange(...draft.selection)}catch(_){}}}
 }
+function stCaptureTourDraft(){if(stLastRenderedView!=='admin:tournaments'||page!=='admin'||adminTab!=='tournaments')return null;const form=document.querySelector('form[onsubmit="addTour(event)"]');if(!form)return null;const values=[...form.querySelectorAll('input,select')].filter(x=>x.id&&x.type!=='file').map(x=>({id:x.id,value:x.value}));const file=$('stTourImageFile');const focusId=form.contains(document.activeElement)?document.activeElement.id:null;return {values,file,focusId};}
+function stRestoreTourDraft(d){if(!d||page!=='admin'||adminTab!=='tournaments')return;for(const x of d.values){const el=$(x.id);if(el)el.value=x.value;}const fresh=$('stTourImageFile');if(fresh&&d.file&&fresh!==d.file){fresh.replaceWith(d.file);if(d.file.files?.length)stTourPreviewImage(d.file);}if(d.focusId)$(d.focusId)?.focus({preventScroll:true});}
+function render(){const stTourDraft=stCaptureTourDraft(),stDraft=stCaptureStoreDraft(),stMediaDraft=stCaptureMediaDraft();btns();$('stats').innerHTML=stat(db.tournaments.length,'بطولة')+stat(db.players.length,'لاعب')+stat(db.teams.length,'فريق')+stat(db.matches.length,'نتيجة معتمدة');$('app').innerHTML=page==='home'?home():page==='register'?registrationPage():page==='tournaments'?tournaments():page==='matches'?matches():page==='ranking'?rankings():page==='store'?stStorePage():page==='track'?stTrackPage():adminSession?admin():loginView();stRestoreStoreDraft(stDraft);stRestoreMediaDraft(stMediaDraft);stRestoreTourDraft(stTourDraft);stLastRenderedView=page==='admin'?'admin:'+adminTab:page;if(page==='store')stLoadStore();if(page==='admin'&&adminSession&&['storeproducts','storeorders','storesettings','storeads'].includes(adminTab))stLoadAdminTab(adminTab);if(page==='admin'&&adminSession&&adminTab==='results')syncTeams();if(page==='admin'&&adminSession&&adminTab==='champions')syncChampions();}function home(){return `<div class="toolbar"><h2>بطولات ST</h2><button class="primary" onclick="go('tournaments')">عرض كل البطولات ←</button></div>${db.tournaments.length?`<div class="grid">${db.tournaments.slice(-3).reverse().map(t=>tourCard(t)).join('')}</div>`:`<div class="empty">لسه مفيش بطولات مسجلة. افتح لوحة الإدارة لإضافة أول بطولة.</div>`}<div class="line"></div><div class="toolbar"><h2>أفضل اللاعبين</h2><button onclick="go('ranking')">التصنيف الكامل</button></div>${rankingBoard(ranking())}`}function tourCard(t){const count=db.teams.filter(x=>x.tid===t.id).length;return `<article class="card">${stTourImage(t,'card')}<div class="row"><span class="pill">${esc(t.status||'مجدولة')}</span><small class="muted">${fmtDate(t.date)}</small></div><h3 style="margin-top:16px">${esc(t.name)}</h3><p class="muted">${count} فريق · ${db.matches.filter(x=>x.tid===t.id).length} مباراة</p><button onclick="selectedTournament='${t.id}';go('tournaments')">تفاصيل البطولة ←</button> <button class="primary" onclick="selectedTournament='${t.id}';go('register')">اشترك الآن</button></article>`}function tournaments(){let t=tour(selectedTournament);if(!t)return `<div class="toolbar"><h2>بطولات ST</h2></div>${db.tournaments.length?`<div class="grid">${db.tournaments.map(tourCard).join('')}</div>`:'<div class="empty">لم تتم إضافة بطولات بعد.</div>'}`;let groups=[...new Set(db.teams.filter(x=>x.tid===t.id).map(x=>x.group).filter(Boolean))].sort();const f=formatOf(t);return `<div class="toolbar"><h2>${esc(t.name)}</h2><button onclick="selectedTournament='';render()">← كل البطولات</button></div><div class="card">${stTourImage(t,'detail')}<div class="row"><span class="pill">${esc(t.status)}</span><span class="muted">${fmtDate(t.date)}</span></div><p>نظام البطولة: <b>${esc(FORMATS[f]||FORMATS.st30)}</b></p><p>عدد الفرق: ${db.teams.filter(x=>x.tid===t.id).length} · المباريات: ${db.matches.filter(x=>x.tid===t.id).length}</p>${t.champion?`<p>🏆 البطل: <b>${esc(tname(t.champion))}</b></p>`:''}${t.runnerUp?`<p>🥈 الوصيف: <b>${esc(tname(t.runnerUp))}</b></p>`:''}</div><p><button class="primary" onclick="selectedTournament='${t.id}';go('register')">سجل فريقك في البطولة</button></p>${publicDraw(t)?`<div class="note">${drawPublished(t)?'القرعة منشورة للجمهور':'معاينة إدارية — القرعة غير منشورة'}</div>${formatPlan(t)}<h2 style="margin-top:30px">ترتيب المجموعات</h2>${['round_robin','league','swiss'].includes(f)?standTable(leagueStandings(t.id)):groups.length?groups.map(g=>`<h3>المجموعة ${esc(g)}</h3>${standTable(standings(t.id,g))}`).join(''):'<div class="empty">أضف الفرق وحدد مجموعاتها من لوحة الإدارة.</div>'}<h2 style="margin-top:30px">جدول مباريات المجموعات</h2>${fixtureList(t.id)}<h2 style="margin-top:30px">خروج المغلوب</h2>${knockoutView(t.id)}<h2 style="margin-top:30px">مباريات البطولة</h2>${matchList(db.matches.filter(x=>x.tid===t.id))}`:`<div class="planlock"><h3>🔒 القرعة لم تُنشر بعد</h3><p class="muted">تفاصيل المواجهات وجدول المباريات ستظهر بعد اعتماد الإدارة ونشر القرعة.</p></div>`}` }function standTable(rows){return `<div class="tablewrap"><table><thead><tr><th>#</th><th>الفريق</th><th>لعب</th><th>فوز</th><th>خسارة</th><th>له</th><th>عليه</th><th>الفارق</th><th>النقاط</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(tname(r.id))}</td><td>${r.played}</td><td>${r.w}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gf-r.ga}</td><td><b>${r.points}</b></td></tr>`).join('')}</tbody></table></div>`}const FORMATS={st30:'ST 30 — مجموعتان ونهائي',round_robin:'دوري كامل — كل فريق ضد الجميع',single_elimination:'خروج مغلوب مباشر',groups_knockout:'مجموعات ثم خروج مغلوب',double_elimination:'خروج مغلوب بفرصتين (مسار فائزين وخاسرين)',swiss:'النظام السويسري — جولات متتالية',league:'دوري ذهاب وإياب'};
+
+ function bracketSize(n){let k=2;while(k<Math.max(2,n))k*=2;return k}
+function formatPlan(t,previewCount){
+const f=formatOf(t),n=Number(previewCount)||db.teams.filter(x=>x.tid===t?.id).length||0;
+let steps=[],notes=[],expected='';
+const add=(name,desc)=>steps.push({name,desc});
+if(f==='st30'){
+add('المجموعة A','يتم توزيع فرق المجموعة A وتحديد مواجهات دور المجموعات. عندما تضم المجموعة 15 فريقًا، يلعب كل فريق 4 مباريات؛ الفوز يمنح 3 نقاط في ترتيب المجموعة، ويُرتب الفرق حسب النقاط ثم فارق الأشواط ثم الأشواط المسجلة ثم المواجهة المباشرة عند انطباقها.');
+add('المجموعة B','تلعب فرق المجموعة B مواجهاتها بشكل مستقل عن المجموعة A، ويُحسب ترتيبها بالطريقة نفسها. لا تواجه فرق A فرق B في هذه المرحلة.');
+add('تحديد المتأهلين','بعد اكتمال نتائج المجموعات، يتأهل أفضل '+Number(t?.qualifyA||8)+' فرق من A وأفضل '+Number(t?.qualifyB||4)+' فرق من B إلى تصفيات منفصلة. عند التعادل الكامل الذي لا تحسمه معايير الترتيب، تُجرى قرعة فاصلة إداريًا.');
+add('خروج المغلوب داخل كل مجموعة','تلعب الفرق المتأهلة مواجهات إقصائية داخل مجموعتها. الفائز ينتقل للدور التالي والخاسر يودّع التصفيات، حتى يتحدد بطل واحد من A وبطل واحد من B.');
+add('النهائي العام','يلعب بطل المجموعة A ضد بطل المجموعة B مباراة نهائية واحدة لتحديد بطل ST والوصيف. تُحتسب نقاط التصنيف لكل لاعب بحسب أعلى مرحلة حققها في البطولة.');
+notes.push('نظام ST 30 يفترض مجموعتين، ويُفضّل استخدام 15 فريقًا في كل مجموعة لتحقيق 4 مباريات لكل فريق.');
+}else if(f==='groups_knockout'){
+add('توزيع الفرق على المجموعات','تحدد الإدارة عدد المجموعات وتوزيع الفرق عليها قبل اعتماد القرعة. عدد المباريات داخل كل مجموعة يعتمد على عدد فرقها؛ كل فريق يواجه باقي فرق مجموعته وفق الجدول المتاح.');
+add('دور المجموعات','تُسجل نتائج كل مباراة بالأشواط، ويحصل الفائز على 3 نقاط والخاسر على صفر. يتحدد ترتيب الفرق بالنقاط ثم فارق الأشواط ثم الأشواط المسجلة ثم المواجهة المباشرة إن انطبقت.');
+add('تحديد الفرق المتأهلة','بعد انتهاء مباريات المجموعة تُختار الفرق المتأهلة حسب العدد المحدد لها. لا تبدأ مباريات خروج المغلوب قبل اكتمال النتائج اللازمة لتحديد الفرق المتأهلة.');
+add('الأدوار الإقصائية','يتواجه المتأهلون في مباريات خروج مغلوب: الفائز يكمل والخاسر يخرج، حتى يتحدد الفائز في المسار. عدد الأدوار يتوقف على عدد المتأهلين.');
+add('تحديد البطل',isFair24(t)?'يتأهل العدد الأساسي من كل مجموعة ثم تُملأ المقاعد المتبقية تلقائيًا بأفضل الفرق حسب الترتيب.':'تتحدد طريقة التأهل من إعدادات البطولة.');
+notes.push(isFair24(t)?'تُحسب المقاعد الإضافية بالنقاط ثم فارق الأشواط ثم الأشواط المسجلة، ويجب حسم التعادل المؤثر إداريًا.':'اختر إعدادات التأهل من لوحة الإدارة؛ نظام التأهل التلقائي يدعم أعدادًا مختلفة من الفرق والمجموعات.');
+}else if(f==='single_elimination'){
+const size=bracketSize(n||2);
+for(let k=size;k>=2;k/=2){
+const matches=k/2,qualifiers=k/2,first=k===size;
+const label=k===2?'النهائي':k===4?'نصف النهائي':k===8?'ربع النهائي':'دور الـ'+k;
+let desc='تُقام '+matches+' '+(matches===1?'مباراة':matches===2?'مباراتان':'مباريات')+' في هذا الدور عند اكتمال جميع مقاعده. الفائز في كل مواجهة يتأهل إلى '+(k===2?'لقب البطولة':k===4?'النهائي':k===8?'نصف النهائي':k===16?'ربع النهائي':'دور الـ'+(k/2))+'، والخاسر يخرج من البطولة.';
+if(first&&n&&size>n)desc+=' عدد الفرق '+n+'، ولذلك توجد '+(size-n)+' خانة إعفاء (Bye) في بداية المسار، وقد يتأهل أصحاب الإعفاء دون لعب مباراة في الدور الأول.';
+add(label,desc);
+}
+expected=n>=2?(n-1)+' مباراة لتحديد البطل عند اكتمال البطولة':'';
+notes.push('القرعة الفعلية تتحدد بعد إضافة الفرق. المعاينة توضح هيكل الأدوار ولا تعني اعتماد المواجهات أو نشرها.');
+}else if(f==='double_elimination'){
+add('مسار الفائزين — Winners Bracket','تبدأ جميع الفرق في مسار الفائزين. كل فريق يفوز يستمر في هذا المسار، أما أول خسارة فتنقله إلى مسار الخاسرين بدل خروجه مباشرة.');
+add('مسار الخاسرين — Losers Bracket','الفرق التي خسرت مرة واحدة تلعب مواجهات فرصة ثانية. الخسارة الثانية تعني الخروج النهائي من البطولة، والفائز يستمر نحو نهائي مسار الخاسرين.');
+add('نهائيا المسارين','يُحدد بطل مسار الفائزين وبطل مسار الخاسرين. الفائز من مسار الخاسرين يكون قد خسر مباراة سابقة، بينما بطل مسار الفائزين لم يخسر.');
+add('النهائي العام وإعادة النهائي','يتواجه بطلا المسارين. في نظام الفرصتين القياسي، إذا فاز بطل مسار الخاسرين أول مرة قد تُلعب مباراة إعادة نهائية (Bracket Reset)، لأن الطرف الآخر لم يتعرض إلا لخسارته الأولى.');
+notes.push('تنبيه: هذه معاينة تعليمية فقط؛ محرك Double Elimination الحالي غير مكتمل ولا يسمح بنشر قرعته رسميًا.');
+}else if(f==='swiss'){
+add('الجولة الأولى','تُحدد مواجهات البداية بين الفرق المسجلة. تلعب الفرق مباراة واحدة في الجولة عادةً، وقد يحصل فريق على راحة (Bye) إذا كان عدد الفرق فرديًا.');
+for(let i=2;i<=Math.min(12,Number(t?.swissRounds||4));i++)add('الجولة '+i,'بعد اعتماد نتائج الجولة السابقة، تُرتب الفرق حسب نقاطها وتُنشأ مواجهات جديدة بين فرق متقاربة في النقاط، مع محاولة تجنب تكرار الخصوم. الفوز يساوي 3 نقاط في ترتيب البطولة.');
+add('الترتيب النهائي','بعد اكتمال جميع الجولات، تُرتب الفرق وفق نقاط المباريات ومعايير كسر التعادل المتاحة في الموقع. لا يوجد خروج مغلوب تلقائي في هذا النظام.');
+notes.push('الجولات التالية تُنشأ تدريجيًا بعد تسجيل نتائج الجولة السابقة، وليست قرعة ثابتة بالكامل من البداية.');
+}else if(f==='league'||f==='round_robin'){
+add('تسجيل الفرق وتجهيز الجدول','تُضاف الفرق المشاركة، ثم يُولّد الموقع جدول المواجهات والجولات وفق عدد الفرق. عند وجود عدد فردي قد يحصل أحد الفرق على راحة في بعض الجولات.');
+add(f==='league'?'مرحلة الذهاب':'جولات الدوري','كل فريق يواجه جميع الفرق الأخرى '+(f==='league'?'مرة في الذهاب':'مرة واحدة')+'. تُسجل نتيجة كل مواجهة بالأشواط، والفوز يمنح 3 نقاط والخسارة صفرًا في جدول الترتيب.');
+if(f==='league')add('مرحلة الإياب','تُعاد مواجهات الذهاب مع تبديل ترتيب الفريقين، ليواجه كل فريق كل منافس مرتين إجمالًا. تُضاف نتائج الإياب إلى رصيد نقاط الدوري.');
+add('الترتيب النهائي','يُحدد الترتيب بعد انتهاء المباريات حسب مجموع النقاط ثم فارق الأشواط ثم الأشواط المسجلة. لا توجد شجرة خروج مغلوب أو مباراة نهائية تلقائية في الدوري.');
+if(n>=2)expected=(f==='league'?n*(n-1):n*(n-1)/2)+' مباراة إجمالًا';
+}
+return `<div class="planbox"><div class="row"><h3>🗺️ خطة البطولة — ${esc(FORMATS[f]||f)}</h3><span class="pill">${n?n+' فريق في المعاينة':'معاينة قبل إضافة الفرق'}</span></div><div class="plansteps">${steps.map((x,i)=>`<div class="planstep"><b>${i+1}. ${esc(x.name)}</b><p class="mini" style="margin:9px 0 0;line-height:1.9;color:#c5d9ee;font-size:13px">${esc(x.desc)}</p></div>`).join('')}</div>${expected?`<p class="note">📊 ${esc(expected)}</p>`:''}${notes.map(x=>`<p class="mini" style="margin-top:12px">${esc(x)}</p>`).join('')}</div>`;
+}
+function planPreviewChange(){const t={format:$('tformat')?.value||'st30',swissRounds:Number($('swissRounds')?.value||4)};if($('newTourPlan'))$('newTourPlan').innerHTML=formatPlan(t,Number($('previewTeams')?.value)||0)}
+function drawPublished(t){return t?.drawPublished===true}
+function toggleDrawPublish(id){const t=tour(id);if(!t||!adminSession)return;const next=!drawPublished(t);if(next&&formatOf(t)==='groups_knockout'&&!isFair24(t))return alert('اختار التأهل التلقائي قبل نشر القرعة');if(next&&isFair24(t)&&db.teams.filter(x=>x.tid===id).length!==Number(t.expectedTeams))return alert('لا يمكن نشر القرعة قبل اكتمال الفرق المسجلة');if(next&&formatOf(t)==='double_elimination')return alert('لا يمكن نشر قرعة الفرصتين حاليًا: المحرك يحتاج استكمال شجرة الفائزين والخاسرين أولًا.');if(next&&db.teams.filter(x=>x.tid===id).length<2)return alert('أضف فريقين على الأقل قبل نشر القرعة');if(!confirm(next?'نشر قرعة البطولة وجدول المباريات للجمهور؟':'إخفاء القرعة وجدول المواجهات عن الجمهور؟'))return;t.drawPublished=next;save()}
+function publicDraw(t){return drawPublished(t)||!!adminSession}
+function formatOf(t){return t?.format||'st30'}
+function pairRounds(ids,twice=false){const a=ids.slice();if(a.length%2)a.push(null);const n=a.length,rounds=[];for(let r=0;r<n-1;r++){let round=[];for(let i=0;i<n/2;i++){const x=a[i],y=a[n-1-i];if(x&&y)round.push(r%2?[y,x]:[x,y])}rounds.push(round);a.splice(1,0,a.pop())}return twice?rounds.concat(rounds.map(round=>round.map(([a,b])=>[b,a]))):rounds}
+function allFixtures(tid){const t=tour(tid),format=formatOf(t),ids=db.teams.filter(x=>x.tid===tid).map(x=>x.id),groups=[...new Set(db.teams.filter(x=>x.tid===tid&&x.group).map(x=>x.group))].sort(),out=[];
+if(['single_elimination','double_elimination'].includes(format))return [];
+if(format==='swiss')return swissFixtures(tid);
+if(['round_robin','league'].includes(format)){pairRounds(ids,format==='league').forEach((pairs,r)=>pairs.forEach(([a,b])=>out.push({tid,group:'الدوري',round:r+1,a,b})));return out}
+for(const g of groups){const members=db.teams.filter(x=>x.tid===tid&&x.group===g).map(x=>x.id),n=members.length;if(n<2)continue;
+if(format==='st30'&&n>=5){let edges=[];for(let i=0;i<n;i++)for(const offset of [1,2])edges.push([members[i],members[(i+offset)%n]]);let rounds=[];for(const [a,b] of edges){let r=rounds.findIndex(x=>!x.has(a)&&!x.has(b));if(r<0){r=rounds.length;rounds.push(new Set())}rounds[r].add(a);rounds[r].add(b);out.push({tid,group:g,round:r+1,a,b})}}
+else pairRounds(members).forEach((pairs,r)=>pairs.forEach(([a,b])=>out.push({tid,group:g,round:r+1,a,b}))) }
+return out}
+function swissFixtures(tid){const t=tour(tid),ids=db.teams.filter(x=>x.tid===tid).map(x=>x.id),maxRounds=Math.max(1,Math.min(12,Number(t?.swissRounds||4))),out=[],seen=new Set(),byeCount=new Map(ids.map(id=>[id,0]));for(let r=1;r<=maxRounds;r++){
+if(r>1){const previous=out.filter(x=>x.round===r-1);if(previous.some(x=>!resultFor(tid,'group',x.a,x.b)))break;}
+const points=new Map(ids.map(id=>[id,0]));for(const m of db.matches.filter(m=>m.tid===tid&&m.stage==='group'&&(m.round||1)<r)){points.set(winnerFor(m),(points.get(winnerFor(m))||0)+3);seen.add([m.a,m.b].sort().join('|'))}
+let available=ids.slice().sort((a,b)=>(points.get(b)||0)-(points.get(a)||0)||a.localeCompare(b));if(available.length%2){let bye=available.slice().reverse().sort((a,b)=>(byeCount.get(a)||0)-(byeCount.get(b)||0))[0];available=available.filter(x=>x!==bye);byeCount.set(bye,(byeCount.get(bye)||0)+1)}
+while(available.length>1){const a=available.shift();let j=available.findIndex(b=>!seen.has([a,b].sort().join('|')));if(j<0)j=0;const b=available.splice(j,1)[0];out.push({tid,group:'سويسري',round:r,a,b});seen.add([a,b].sort().join('|'))}
+}return out}
+function plannedFixtures(tid){return allFixtures(tid)}
+function leagueStandings(tid){const ids=db.teams.filter(t=>t.tid===tid).map(t=>t.id),r=new Map(ids.map(id=>[id,{id,played:0,w:0,l:0,gf:0,ga:0,points:0}]));for(const m of db.matches.filter(m=>m.tid===tid&&m.stage==='group')){if(!r.has(m.a)||!r.has(m.b))continue;for(const [id,own,opp] of [[m.a,m.sa,m.sb],[m.b,m.sb,m.sa]]){const x=r.get(id);x.played++;x.gf+=own;x.ga+=opp;if(own>opp){x.w++;x.points+=3}else x.l++}}return [...r.values()].sort((a,b)=>b.points-a.points||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf)}
+function resultFor(tid,stage,a,b){return db.matches.find(m=>m.tid===tid&&m.stage===stage&&((m.a===a&&m.b===b)||(m.a===b&&m.b===a)))}
+function winnerFor(m){return m.sa>m.sb?m.a:m.b}
+function resultFor(tid,stage,a,b){return db.matches.find(m=>m.tid===tid&&m.stage===stage&&((m.a===a&&m.b===b)||(m.a===b&&m.b===a)))}
+function winnerFor(m){return m.sa>m.sb?m.a:m.b}
+// Administrative advancement is stored separately from played scores.
+function stAdvanceKey(tid,stage,a,b){return [tid,stage,...[a,b].sort()].join('|')}
+function stAdvancement(tid,stage,a,b){return db.adminAdvancements?.[stAdvanceKey(tid,stage,a,b)]||null}
+function stFixtureWinner(tid,stage,a,b){const m=resultFor(tid,stage,a,b);return m?winnerFor(m):stAdvancement(tid,stage,a,b)?.winner||null}
+function stAdminAdvance(tid,stage,a,b){
+ if(!adminSession)return alert('الإدارة فقط');
+ if(!['single_elimination','st30','groups_knockout'].includes(formatOf(tour(tid))))return alert('النظام ده غير مدعوم حاليًا للتأهل الإداري');
+ if(!(stage.startsWith('DIRECT-')||stage.startsWith('KO-')||stage==='ST-Final'))return alert('التأهل الإداري متاح في خروج المغلوب فقط');
+ const ta=team(a),tb=team(b);if(!ta||!tb||ta.tid!==tid||tb.tid!==tid)return alert('المباراة غير صحيحة');
+ if(!!ta.withdrawn===!!tb.withdrawn)return alert('لازم فريق واحد فقط يكون منسحب');
+ const fixtures=pendingResultFixtures(tid);if(!fixtures.some(x=>x.stage===stage&&x.a===a&&x.b===b))return alert('المواجهة لم تعد متاحة؛ حدّث الصفحة');
+ if(resultFor(tid,stage,a,b)||stAdvancement(tid,stage,a,b))return alert('المواجهة محسومة بالفعل');
+ const winner=ta.withdrawn?b:a, loser=ta.withdrawn?a:b;
+ if(!confirm('اعتماد تأهل '+tname(winner)+' بسبب انسحاب '+tname(loser)+'؟\nلن تُسجل نتيجة أشواط وهمية.'))return;
+ db.adminAdvancements=db.adminAdvancements||{};
+ db.adminAdvancements[stAdvanceKey(tid,stage,a,b)]={tid,stage,a,b,winner,loser,reason:'withdrawal',at:new Date().toISOString()};
+ if(stage==='ST-Final'){const t=tour(tid);t.champion=winner;t.runnerUp=loser;}
+ save();
+}
+function stWithdrawalAdvancesAdmin(){
+ const rows=db.tournaments.flatMap(t=>pendingResultFixtures(t.id).filter(f=>(f.stage.startsWith('DIRECT-')||f.stage.startsWith('KO-')||f.stage==='ST-Final')&&Boolean(team(f.a)?.withdrawn)!==Boolean(team(f.b)?.withdrawn)&&!stAdvancement(t.id,f.stage,f.a,f.b)).map(f=>({...f,tid:t.id})));
+ return `<div class="card" style="margin-bottom:16px"><div class="row"><h3>🏳️ تأهل إداري بسبب الانسحاب</h3><span class="pill">${rows.length} مواجهة</span></div><p class="mini">اعتماد الفائز بدون تسجيل نتيجة وهمية. متاح للخروج المباشر وخروج المغلوب بالمجموعات، وليس لنظام الفرصتين أو القرعة الخاصة 24 فريقًا.</p>${rows.map(f=>`<div class="match"><div><b>${esc(tname(f.a))}</b> × <b>${esc(tname(f.b))}</b><div class="mini">${esc(tour(f.tid)?.name||'')} · ${esc(f.stage)}</div></div><button class="primary" onclick="stAdminAdvance('${esc(f.tid)}','${esc(f.stage)}','${esc(f.a)}','${esc(f.b)}')">اعتماد تأهل المنافس</button></div>`).join('')||'<div class="empty">لا توجد مواجهات انسحاب تنتظر اعتماد التأهل.</div>'}</div>`;
+}
+function directBracket(tid){const f=formatOf(tour(tid)),ids=db.teams.filter(t=>t.tid===tid).map(t=>t.id);if(f!=='single_elimination'||ids.length<2)return [];let active=ids.slice(),rounds=[];for(let r=0;r<12&&active.length>1;r++){const fixtures=[],next=[];for(let i=0;i<active.length;i+=2){if(!active[i+1]){next.push(active[i]);continue}const a=active[i],b=active[i+1],stage='DIRECT-'+r;fixtures.push({a,b,stage,round:r+1});const winner=stFixtureWinner(tid,stage,a,b);if(winner)next.push(winner)}rounds.push(fixtures);if(next.length!==Math.ceil(active.length/2))break;active=next}return rounds}
+function doubleBracket(tid){if(formatOf(tour(tid))!=='double_elimination')return [];const ids=db.teams.filter(t=>t.tid===tid).map(t=>t.id);if(ids.length<2)return [];let winners=ids.slice(),losses=new Map(ids.map(id=>[id,0])),fixtures=[],step=0;let pending=[];for(let guard=0;guard<80;guard++){
+const undefeated=ids.filter(id=>(losses.get(id)||0)===0),oneLoss=ids.filter(id=>(losses.get(id)||0)===1);if(undefeated.length+oneLoss.length<=1)break;
+let contenders;if(undefeated.length>=2)contenders=undefeated;else if(oneLoss.length>=2)contenders=oneLoss;else contenders=undefeated.concat(oneLoss);
+if(contenders.length<2)break;
+const stage='DE-'+step,round=[];for(let i=0;i+1<contenders.length;i+=2){const a=contenders[i],b=contenders[i+1];round.push({a,b,stage,round:step+1});}
+fixtures.push(round);if(round.some(x=>!resultFor(tid,x.stage,x.a,x.b)))break;
+for(const x of round){const m=resultFor(tid,x.stage,x.a,x.b),loser=winnerFor(m)===x.a?x.b:x.a;losses.set(loser,(losses.get(loser)||0)+1)}step++;
+}return fixtures}
+function knockoutBracket(tid,group){const t=tour(tid);if(formatOf(t)!=='st30'&&formatOf(t)!=='groups_knockout')return [];const rows=standings(tid,group),size=(group==='A'?Number(t?.qualifyA||8):group==='B'?Number(t?.qualifyB||4):Number(t?.qualify||8));if(![2,4,8,16,32].includes(size)||rows.length<size)return [];const groupGames=plannedFixtures(tid).filter(x=>x.group===group);if(groupGames.some(x=>!db.matches.some(m=>m.tid===tid&&m.stage==='group'&&((m.a===x.a&&m.b===x.b)||(m.a===x.b&&m.b===x.a)))))return [];let current=rows.slice(0,size).map(x=>x.id),rounds=[];let stageNum=0;while(current.length>1){const stage='KO-'+group+'-'+stageNum,fixtures=[];for(let i=0;i<current.length/2;i++){const a=current[i],b=current[current.length-1-i];fixtures.push({a,b,stage,group,round:stageNum+1});}rounds.push(fixtures);const next=[];for(const f of fixtures){if(!f.a||!f.b)return rounds;const winner=stFixtureWinner(tid,stage,f.a,f.b);if(!winner)return rounds;next.push(winner)}current=next;stageNum++}return rounds}
+/* ST ready matches: derived from existing saved results, no database changes. */
+function stReadyMatchRows(t){
+ const tid=t.id, format=formatOf(t), out=[], seen=new Set();
+ const add=(f, label)=>{
+  if(!f?.a||!f?.b||f.a===f.b)return;
+  const key=[tid,f.stage,...[f.a,f.b].sort()].join('|');
+  if(seen.has(key)||resultFor(tid,f.stage,f.a,f.b)||stAdvancement(tid,f.stage,f.a,f.b)||team(f.a)?.withdrawn||team(f.b)?.withdrawn)return;
+  seen.add(key);
+  out.push({tid,a:f.a,b:f.b,stage:f.stage,label:label||f.stage,round:f.round||0});
+ };
+ if(['st30','groups_knockout','round_robin','league','swiss'].includes(format)){
+  for(const f of plannedFixtures(tid))add({...f,stage:'group'},'المجموعات · '+(f.group||'الدوري')+' · الجولة '+(f.round||1));
+ }
+ if(format==='single_elimination'){
+  for(const [i,round] of directBracket(tid).entries())for(const f of round)add(f,'خروج مباشر · الدور '+(i+1));
+ }else if(format==='double_elimination'){
+  for(const [i,round] of doubleBracket(tid).entries())for(const f of round)add(f,'فرصتين · الجولة '+(i+1));
+ }else if(format==='st30'||format==='groups_knockout'){
+  if(isFair24(t)){
+   const bracket=fair24Bracket(tid);
+   for(const [i,round] of (bracket.rounds||[]).entries())for(const f of round)add(f,'خروج المغلوب · الدور '+(i+1));
+  }else{
+   const groups=[...new Set(db.teams.filter(x=>x.tid===tid).map(x=>x.group).filter(Boolean))];
+   for(const g of groups)for(const [i,round] of knockoutBracket(tid,g).entries())for(const f of round)add(f,'خروج المغلوب · المجموعة '+g+' · الدور '+(i+1));
+   if(format==='st30'){
+    const finals=groups.filter(g=>['A','B'].includes(g)).map(g=>{
+     const rounds=knockoutBracket(tid,g),last=rounds[rounds.length-1];
+     if(!last||last.length!==1)return null;
+     const f=last[0],m=resultFor(tid,f.stage,f.a,f.b);
+     return stFixtureWinner(tid,f.stage,f.a,f.b);
+    });
+    if(finals.length===2&&finals.every(Boolean))add({a:finals[0],b:finals[1],stage:'ST-Final'},'النهائي العام');
+   }
+  }
+ }
+ return out;
+}
+function stReadyMatchesAdmin(){
+ const rows=db.tournaments.flatMap(stReadyMatchRows);
+ const byTour=new Map();for(const r of rows){if(!byTour.has(r.tid))byTour.set(r.tid,[]);byTour.get(r.tid).push(r);}
+ return stWithdrawalAdvancesAdmin()+`<div class="card"><div class="row"><h3>⚡ المباريات الجاهزة الآن</h3><span class="pill">${rows.length} مباراة</span></div><p class="mini">المباريات التي تحدد طرفاها ولم تُسجل نتيجتها. القائمة تُحسب تلقائيًا من نتائج البطولات، ولا تُنشئ مباريات أو تحفظ أي بيانات جديدة.</p>${rows.length?[...byTour].map(([tid,items])=>`<h3 style="margin:22px 0 10px;color:#8dc4ff">${esc(tour(tid)?.name||'بطولة')}</h3>${items.map((r,i)=>`<div class="match" style="border-color:#24775f"><div><span class="pill" style="background:#164c3e;color:#a7f3d0">جاهزة للعب</span><div style="margin-top:7px"><b>${esc(tname(r.a))}</b> × <b>${esc(tname(r.b))}</b></div><div class="mini">${esc(r.label)}</div></div><button type="button" onclick="stPrepareReadyResult('${esc(r.tid)}','${esc(r.stage)}','${esc(r.a)}','${esc(r.b)}')">تسجيل النتيجة</button></div>`).join('')}`).join(''):'<div class="empty">مفيش مباريات جاهزة حاليًا. هتظهر تلقائيًا بعد تسجيل الفرق أو نتائج التأهل.</div>'}</div>`;
+}
+function stPrepareReadyResult(tid,stage,a,b){
+ adminTab='results';render();
+ const mt=$('mt'),st=$('stage');if(!mt||!st)return;
+ mt.value=tid;st.value=stage;
+ if(![...st.options].some(o=>o.value===stage)){
+  const option=document.createElement('option');option.value=stage;option.textContent=stage;st.appendChild(option);st.value=stage;
+ }
+ syncTeams();
+ const ma=$('ma'),mb=$('mb');if(ma&&mb){ma.value=a;mb.value=b;}
+ $('sa')?.focus();
+}
+function stBracketProgress(tid,rounds){
+ if(!rounds?.length)return '';
+ let out='<div class="card" style="margin:15px 0;border-color:#32618c"><h3>🧭 مسار المباريات والتجهيز</h3><p class="mini">يتم تحديث المتأهلين والمواجهات تلقائيًا بعد اعتماد كل نتيجة.</p>';
+ for(let r=0;r<rounds.length;r++){
+  const round=rounds[r];out+='<h4 style="color:#8dc4ff;margin:14px 0 8px">'+(r===rounds.length-1?'النهائي':r===rounds.length-2?'نصف النهائي':r===rounds.length-3?'ربع النهائي':'الدور '+(r+1))+'</h4>';
+  for(let j=0;j<round.length;j++){
+   const f=round[j];if(!f.a||!f.b)continue;
+   const m=resultFor(tid,f.stage,f.a,f.b),winner=m?winnerFor(m):null;
+   const next=rounds[r+1]?.[Math.floor(j/2)];
+   const target=next?' ← يتأهل إلى المباراة '+(Math.floor(j/2)+1)+' في الدور التالي':' ← بطل البطولة';
+   out+='<div class="match" style="border-color:'+(m?'#257c63':'#365674')+'"><div><b>'+esc(tname(f.a))+'</b> × <b>'+esc(tname(f.b))+'</b><div class="mini">مباراة '+(j+1)+'</div></div><div style="text-align:left">'+(m?'<span style="color:#34d399">✓ '+esc(tname(winner))+esc(target)+'</span>':'<span style="color:#ffd28a">'+(r===0||rounds[r-1]?.every(x=>!!resultFor(tid,x.stage,x.a,x.b))?'جاهزة للعب':'بانتظار المتأهلين')+'</span>')+'</div></div>';
+  }
+ }
+ return out+'</div>';
+}
+function knockoutView(tid){if(isFair24(tour(tid)))return fair24View(tid);let html='';const f=formatOf(tour(tid));if(f==='single_elimination'||f==='double_elimination'){return stBracketProgress(tid,f==='double_elimination'?doubleBracket(tid):directBracket(tid))+(f==='double_elimination'?doubleBracket(tid):directBracket(tid)).map((round,i)=>'<h3>الدور '+(i+1)+'</h3>'+round.map(x=>'<div class="match">'+esc(tname(x.a))+' — '+esc(tname(x.b))+'</div>').join('')).join('')||'<p>أضف فريقين على الأقل.</p>'}if(!['st30','groups_knockout'].includes(f))return '<p class="muted">هذا النظام يعتمد على الجولات وترتيب النقاط، ولا يوجد خروج مغلوب.</p>';for(const g of ['A','B']){html+='<h3>خروج المغلوب — المجموعة '+g+'</h3>';const rounds=knockoutBracket(tid,g);if(!rounds.length){html+='<p class="muted">يظهر بعد اكتمال نتائج المجموعة.</p>';continue;}for(const round of rounds){html+='<h4>'+(round.length===1?'نهائي المجموعة':round.length===2?'نصف النهائي':'دور '+round.length*2)+'</h4>';for(const f of round){const m=db.matches.find(x=>x.tid===tid&&x.stage===f.stage&&((x.a===f.a&&x.b===f.b)||(x.a===f.b&&x.b===f.a)));html+='<div class="match"><span>'+esc(tname(f.a))+'</span><span class="score">'+(m?m.sa+' : '+m.sb:'—')+'</span><span>'+esc(tname(f.b))+'</span></div>';}}}return html+(['st30','groups_knockout'].includes(f)?['A','B'].map(g=>stBracketProgress(tid,knockoutBracket(tid,g))).join(''):'')}
+function liveKey(tid,stage,a,b,round){return [tid,stage,...[a,b].sort(),round||0].join('|')}
+function isLive(tid,stage,a,b,round){return !!db.liveMatches?.[liveKey(tid,stage,a,b,round)]}
+function liveTag(tid,stage,a,b,round){return isLive(tid,stage,a,b,round)?'<span class="st-live-tag">🔴 LIVE</span>':''}
+function liveControl(tid,stage,a,b,round){if(!adminSession)return '';const key=liveKey(tid,stage,a,b,round),active=!!db.liveMatches?.[key];return `<button type="button" class="${active?'danger':'primary'}" onclick="toggleMatchLive('${tid}','${stage}','${a}','${b}',${Number(round)||0})">${active?'⏹ إنهاء LIVE':'🔴 تشغيل LIVE'}</button>`}
+function toggleMatchLive(tid,stage,a,b,round){if(!adminSession)return;const t=tour(tid);if(!t||!team(a)||!team(b)||team(a).tid!==tid||team(b).tid!==tid)return alert('مباراة غير صحيحة');const key=liveKey(tid,stage,a,b,round);db.liveMatches=db.liveMatches||{};if(db.liveMatches[key])delete db.liveMatches[key];else{if(db.matches.some(m=>m.tid===tid&&m.stage===stage&&m.round===(round||undefined)&&((m.a===a&&m.b===b)||(m.a===b&&m.b===a))))return alert('المباراة لها نتيجة معتمدة؛ لا يمكن تشغيل LIVE');db.liveMatches[key]=true}save()}
+function fixtureList(tid){const games=plannedFixtures(tid);if(!games.length)return '<div class="empty">لا توجد مواجهات دورية لهذا النظام، راجع قرعة خروج المغلوب.</div>';return [...new Set(games.map(x=>x.group))].map(g=>`<h3>المجموعة ${esc(g)} — ${games.filter(x=>x.group===g).length} مباراة مجدولة</h3>${games.filter(x=>x.group===g).map(x=>{const m=db.matches.find(m=>m.tid===tid&&m.stage==='group'&&((m.a===x.a&&m.b===x.b)||(m.a===x.b&&m.b===x.a)));return `<div class="match"><span>${esc(tname(x.a))}</span><span class="score">${m?(m.a===x.a?m.sa+':'+m.sb:m.sb+':'+m.sa):'—'}</span><span>${esc(tname(x.b))}</span><span class="mini">الجولة ${x.round} · ${m?'تم التسجيل':'بانتظار النتيجة'}</span>${liveTag(tid,'group',x.a,x.b,x.round)}${!m?liveControl(tid,'group',x.a,x.b,x.round):''}</div>`}).join('')}`).join('')}
+function matchList(ms){return ms.length?ms.slice().reverse().map(m=>`<div class="match"><span>${esc(tname(m.a))}</span><span class="score">${m.sa} : ${m.sb}</span><span>${esc(tname(m.b))}</span><span class="mini">${esc(tour(m.tid)?.name||'')} · ${m.stage==='group'?'مجموعات':esc(m.stage||'خروج المغلوب')}</span></div>`).join(''):'<div class="empty">لا توجد نتائج مسجلة.</div>'}function matches(){return `<div class="toolbar"><h2>نتائج المباريات</h2></div>${matchList(adminSession?db.matches:db.matches.filter(m=>drawPublished(tour(m.tid))))}`}function rankTable(rows,startRank=1){return `<div class="tablewrap"><table><thead><tr><th>المركز</th><th>اللاعب</th><th>النقاط</th><th>المباريات</th><th>الانتصارات</th><th>الألقاب</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${r.rankPosition??(startRank+i)}</td><td><div style="display:flex;align-items:center;gap:9px">${playerAvatar(r,38)}<b>${esc(r.name)}</b></div><div class="mini" dir="ltr" style="text-align:right;overflow-wrap:anywhere">ID: ${esc(shortPlayerId(r.id))}</div></td><td style="color:#6bb3ff"><b>${r.points}</b></td><td>${r.played}</td><td>${r.wins}</td><td>${r.titles}</td></tr>`).join('')}</tbody></table></div>`}
+function rankPodiumCard(p,position){if(!p)return '';const labels={1:'المركز الأول',2:'المركز الثاني',3:'المركز الثالث'},medals={1:'🥇',2:'🥈',3:'🥉'};return `<div class="st-podium-card st-podium-${position}"><div class="st-podium-crown">${position===1?'♛':position===2?'♕':'♛'}</div><div class="st-podium-avatar">${playerAvatar(p,112)}</div><div class="st-podium-medal">${medals[position]} ${labels[position]}</div><div class="st-podium-name">${esc(p.name)}</div><div class="st-podium-id">${esc(shortPlayerId(p.id))}</div><div class="st-podium-points"><strong>${Number(p.points)||0}</strong> نقطة</div></div>`}
+function rankingBoard(rows){if(!rows.length)return '<div class="empty">لا يوجد لاعبون في التصنيف بعد.</div>';const podium=rows.slice(0,3);return `<div class="st-rank-heading"><h2>🏆 تصنيف لاعبي ST Padel Tour</h2><p>ترتيب اللاعبين حسب النقاط في جميع بطولات ST</p></div><div class="st-podium">${rankPodiumCard(podium[1],2)}${rankPodiumCard(podium[0],1)}${rankPodiumCard(podium[2],3)}</div>${rows.length>3?`<h3 class="st-rank-rest">باقي الترتيب</h3>${rankTable(rows.slice(3),4)}`:''}`}
+function rankings(){return `<div class="toolbar"><h2>تصنيف لاعبي ST</h2><input id="search" placeholder="ابحث عن لاعب..." oninput="filterRank(this.value)"></div><div id="rankResults">${rankingBoard(ranking())}</div><p class="mini">نقاط التصنيف لكل لاعب حسب أعلى مرحلة وصل إليها: المشاركة 1، دور الـ16 = 3، دور الـ8 = 5، نصف النهائي = 8، الوصيف = 12، البطل = 15. النقاط غير تراكمية داخل البطولة، وتتجمع عبر البطولات. الفوز في المجموعات له ترتيب منفصل.</p>`}
+function filterRank(s){const q=s.trim().toLocaleLowerCase('ar');const rows=ranking();$('rankResults').innerHTML=q?rankTable(rows.map((r,i)=>({...r,rankPosition:i+1})).filter(r=>r.name.toLocaleLowerCase('ar').includes(q)).map(r=>r),1):rankingBoard(rows)}
+const option=(arr,fn)=>arr.map(x=>`<option value="${esc(x.id)}">${esc(fn(x))}</option>`).join('');const field=(label,body)=>`<div class="field"><label>${label}</label>${body}</div>`;function loginView(){return `<div class="card" style="max-width:520px;margin:30px auto"><h2>دخول إدارة ST</h2><p class="muted">المشاهدون يمكنهم متابعة النتائج بدون حساب. الإدارة فقط تتطلب حسابًا مصرحًا به في Supabase.</p><form onsubmit="loginAdmin(event)"><div class="field"><label>البريد الإلكتروني</label><input id="loginEmail" type="email" required autocomplete="username"></div><div class="field"><label>كلمة المرور</label><input id="loginPassword" type="password" required autocomplete="current-password"></div><button class="primary">تسجيل الدخول</button></form><p id="authMsg" class="mini"></p></div>`}
+async function loginAdmin(e){e.preventDefault();const {data,error}=await cloud.auth.signInWithPassword({email:$('loginEmail').value,password:$('loginPassword').value});if(error){$('authMsg').textContent=error.message;return;}const {data:access,error:accessError}=await cloud.from('admin_users').select('user_id').eq('user_id',data.user.id).maybeSingle();if(accessError||!access){await cloud.auth.signOut();$('authMsg').textContent='الحساب غير مصرح له بإدارة ST';return;}adminSession=data.session;await loadCloud();await loadPaymentRequests();await loadAdminPlayerPhones();await loadPlayerBans();render()}
+async function logoutAdmin(){await cloud.auth.signOut();adminSession=null;adminPlayerPhones={};playerBans={};history.replaceState(null,'',location.pathname+location.search);page='home';render()}
+async function loadCloud(force=false){
+ if(!cloud)return;
+ if(pendingSaves>0&&!force){remoteRefreshPending=true;return;}
+ const {data,error}=await cloud.from('site_state').select('data,revision').eq('id',1).maybeSingle();
+ if(error){console.error(error);alert('تعذر قراءة قاعدة البيانات: '+error.message);return;}
+ if(data?.data){db={...structuredClone(seed),...data.data};stateRevision=Number(data.revision);db.liveMatches=db.liveMatches&&typeof db.liveMatches==='object'&&!Array.isArray(db.liveMatches)?db.liveMatches:{};localStorage.setItem(KEY,JSON.stringify(db));}
+ else{stateRevision=null;alert('سجل بيانات الموقع غير موجود. تم إيقاف الحفظ لحماية البيانات.');}
+ cloudReady=true;render();
+}
+async function initCloud(){if(!cloud){alert('تعذر تحميل مكتبة Supabase، تأكد من اتصال الإنترنت');return;}const {data}=await cloud.auth.getSession();if(data.session){const {data:access}=await cloud.from('admin_users').select('user_id').eq('user_id',data.session.user.id).maybeSingle();adminSession=access?data.session:null;}if(location.hash==='#admin'||(adminSession&&location.hash==='#admin'))page='admin';await loadCloud();if(adminSession){await loadPaymentRequests();await loadAdminPlayerPhones();await loadPlayerBans();}cloud.channel('st-padel-changes').on('postgres_changes',{event:'*',schema:'public',table:'site_state'},()=>loadCloud()).subscribe();}
+function admin(){let tabs=[['players','اللاعبون'],['bans','المحظورون'],['tournaments','البطولات'],['teams','الفرق'],['payments','طلبات الدفع'],['fixtures','الجدول'],['ready','المباريات الجاهزة'],['results','النتائج'],['champions','الأبطال'],['settings','النقاط'],['backup','النسخ الاحتياطي'],['storeproducts','منتجات المتجر'],['storeorders','طلبات المتجر'],['storesettings','إعدادات المتجر'],['storeads','الإعلانات والرعاة']];return `<h2>لوحة إدارة ST <button onclick="logoutAdmin()" style="float:left">تسجيل الخروج</button></h2><div class="note">التعديلات تُحفظ على Supabase، ويجب التأكد من تفعيل صلاحيات الإدارة وقواعد الحماية.</div><div class="adminnav">${tabs.map(([k,v])=>`<button class="${adminTab===k?'on':''} ${k==='payments'?'st-payment-tab':''}" onclick="adminTab='${k}';if(adminTab==='payments')loadPaymentRequests();if(adminTab==='players'){loadAdminPlayerPhones();loadPlayerBans();}render()">${v}${k==='payments'&&paymentRequests.some(r=>r.status==='pending')?`<span class="st-pending-badge" aria-label="طلبات معلقة">${paymentRequests.filter(r=>r.status==='pending').length>99?'99+':paymentRequests.filter(r=>r.status==='pending').length}</span>`:''}</button>`).join('')}</div>${adminContent()}`}function adminContent(){if(adminTab==='ready')return stReadyMatchesAdmin();if(adminTab==='storeproducts')return stAdminProducts();if(adminTab==='storeorders')return stAdminOrders();if(adminTab==='storesettings')return stAdminSettings();if(adminTab==='storeads')return stAdminAds();if(adminTab==='payments')return paymentsAdmin();if(adminTab==='bans')return bansAdmin();if(adminTab==='players')return `<div class="card"><p class="mini">${adminPhonesLoading?'جار تحميل أرقام اللاعبين...':adminPhonesError?'تعذر تحميل أرقام اللاعبين: '+esc(adminPhonesError):'أرقام اللاعبين المعتمدة فقط؛ البيانات القديمة قد لا تحتوي على رقم مرتبط باللاعب.'}</p><button type="button" onclick="loadAdminPlayerPhones()">تحديث أرقام اللاعبين</button></div><div class="card"><h3>إضافة لاعب</h3><form onsubmit="addPlayer(event)" class="formgrid">${field('اسم اللاعب','<input id="pn" required maxlength="80" placeholder="الاسم بالكامل">')}<div class="field" style="align-self:end"><button class="primary">إضافة اللاعب</button></div></form></div><h3 style="margin-top:25px">اللاعبون (${db.players.length})</h3>${db.players.length?`<div class="stack">${db.players.map(p=>`<div class="match"><div><div style="display:flex;align-items:center;gap:10px">${playerAvatar(p,48)}<b>${esc(p.name)}</b></div><div class="mini" dir="ltr" style="text-align:right;overflow-wrap:anywhere">Player ID: ${esc(shortPlayerId(p.id))}</div><div class="mini">رقم الموبايل: <b dir="ltr">${esc(adminPlayerPhones[p.id]||'غير مسجل')}</b></div></div><div class="row"><button type="button" onclick="changePlayerAvatar('${p.id}')">صورة البروفايل</button><button type="button" class="primary" onclick="openEditPlayer('${p.id}')">تعديل</button><button type="button" onclick="linkLegacyPlayerPhone('${p.id}')">${adminPlayerPhones[p.id]?'رقم مرتبط':'ربط رقم موثّق'}</button><button type="button" class="${banActive(p.id)?'danger':'primary'}" onclick="editPlayerBan('${p.id}')">${banActive(p.id)?'فك الحظر / تعديل':'حظر اللاعب'}</button><button type="button" onclick="copyPlayerId('${p.id}')">نسخ ID</button><button class="danger" onclick="delPlayer('${p.id}')">حذف</button></div></div>`).join('')}</div>`:'<div class="empty">لا يوجد لاعبون.</div>'}`;if(adminTab==='tournaments')return `<div class="card"><h3>إنشاء بطولة</h3><form onsubmit="addTour(event)" class="formgrid">${field('اسم البطولة','<input id="tn" required maxlength="100">')}${field('التاريخ','<input id="td" type="date" required>')}${field('نظام البطولة',`<select id="tformat" onchange="planPreviewChange()">${Object.entries(FORMATS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>`)}${field('عدد جولات السويسري','<input id="swissRounds" type="number" min="1" max="12" value="4" oninput="planPreviewChange()">')}${field('عدد الفرق المتوقع للمعاينة','<input id="previewTeams" type="number" min="2" max="256" value="30" oninput="planPreviewChange()">')}${field('الحالة','<select id="ts"><option>مجدولة</option><option>جارية</option><option>منتهية</option></select>')}${field('رسوم اشتراك الفريق (جنيه)','<input id="tfee" type="number" min="0" max="1000000" step="1" required>')}<div class="field wide"><label>صورة / بوستر البطولة (اختياري — PNG أو JPG أو WEBP، حتى 5 ميجابايت)</label><input id="stTourImageFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="stTourPreviewImage(this)"><div id="stTourPreview"></div></div><div class="field" style="align-self:end"><button class="primary">حفظ البطولة</button></div></form><div id="newTourPlan">${formatPlan({format:'st30'},30)}</div></div><h3 style="margin-top:25px">البطولات</h3>${db.tournaments.map(t=>`<div class="match"><b>${esc(t.name)}</b><span>${fmtDate(t.date)}</span><span>${esc(FORMATS[formatOf(t)])}</span><button onclick="editTourFormat('${t.id}')">تغيير النظام</button><button onclick="selectedTournament='${t.id}';adminTab='fixtures';render()">معاينة الخطة</button><button class="${drawPublished(t)?'danger':'primary'}" onclick="toggleDrawPublish('${t.id}')">${drawPublished(t)?'إخفاء القرعة':'نشر القرعة'}</button><span>${Number(t.fee||0)} ج.م للفريق</span><button onclick="editTourFee('${t.id}')">تعديل الرسوم</button><button type="button" onclick="stChangeTourImage('${t.id}')">تغيير صورة البطولة</button><button class="danger" onclick="delTour('${t.id}')">حذف</button></div>`).join('')||'<div class="empty">لا توجد بطولات.</div>'}`;if(adminTab==='teams')return `<div class="card"><h3>إضافة فريق إداريًا (لترحيل الفرق القديمة فقط)</h3><p class="note">الاشتراكات الجديدة يجب اعتمادها من تبويب طلبات الدفع. الإضافة اليدوية تتجاوز مراجعة الدفع؛ استخدمها فقط للفرق القديمة.</p><form class="formgrid" onsubmit="addTeam(event)">${field('البطولة',`<select id="teamTour" required>${option(db.tournaments,t=>t.name)}</select>`)}${field('المجموعة (مثال A أو B)','<input id="grp" required maxlength="12" placeholder="A">')}${field('اللاعب الأول',`<select id="p1" required>${option(db.players,p=>p.name)}</select>`)}${field('اللاعب الثاني',`<select id="p2" required>${option(db.players,p=>p.name)}</select>`)}<div class="field wide"><button class="primary" ${db.players.length<2||!db.tournaments.length?'disabled':''}>إضافة الفريق</button></div></form></div><div class="card" style="margin-top:16px"><h3>استيراد الفرق القديمة دفعة واحدة</h3><p class="note">للبيانات القديمة فقط. التسجيلات الجديدة لا تُضاف إلا بعد دفع InstaPay ومراجعة الإيصال. كل سطر: اللاعب الأول، اللاعب الثاني، المجموعة A أو B. لا تستورد الفرق المدفوعة من هنا.</p><form onsubmit="bulkImportTeams(event)" class="formgrid">${field('البطولة',`<select id="bulkTour" required>${option(db.tournaments,t=>t.name)}</select>`)}<div class="field wide"><textarea id="bulkLines" rows="8" placeholder="أحمد، محمد، A&#10;علي، كريم، B" required style="width:100%;padding:12px;background:#0d1828;color:white;border:1px solid #456"></textarea></div><div class="field wide"><button class="primary">استيراد الفرق القديمة</button></div></form></div><h3 style="margin-top:25px">الفرق (${db.teams.length})</h3>${db.teams.map(t=>`<div class="match"><b>${esc(tname(t.id))}</b><span class="muted">${esc(tour(t.tid)?.name||'')} · المجموعة ${esc(t.group||'لم تُحدد')}</span><button onclick="editTeamGroup('${t.id}')">تحديد المجموعة</button>${t.withdrawn?'<span class="pill" style="background:#633044;color:#ffe0e5">منسحب</span>':''}<button class="${t.withdrawn?'primary':'danger'}" onclick="stToggleTeamWithdrawal('${t.id}')">${t.withdrawn?'إلغاء الانسحاب':'انسحاب الفريق'}</button><button class="danger" onclick="delTeam('${t.id}')">حذف</button></div>`).join('')||'<div class="empty">لا توجد فرق.</div>'}`;if(adminTab==='fixtures')return `<div class="card"><h3>إعدادات وخطة البطولات</h3><p class="note">تقدر تجهز خطة البطولة وتحفظها حتى لو مفيش أي فريق مسجل. توزيع الفرق الفعلي بيبدأ بعد التسجيل والاعتماد.</p>${db.tournaments.map(t=>`<div class="planbox"><div class="row"><h3>${esc(t.name)}</h3><span class="${drawPublished(t)?'publish':'draft'}">${drawPublished(t)?'● منشورة للجمهور':'● مسودة خاصة بالإدارة'}</span></div>${formatPlan(t,Number(t.expectedTeams)||0)}${formatOf(t)==='groups_knockout'?groupConfigPanel(t):''}<div class="row"><button onclick="toggleDrawPublish('${t.id}')">${drawPublished(t)?'إخفاء القرعة':'نشر القرعة'}</button><span class="mini">الفرق المسجلة: ${db.teams.filter(x=>x.tid===t.id).length}</span></div><h3 style="margin-top:18px">جدول المواجهات</h3>${fixtureList(t.id)}<h3>مسار خروج المغلوب</h3>${knockoutView(t.id)}</div>`).join('')||'<div class="empty">أنشئ بطولة أولًا من تبويب البطولات، وبعدها هتظهر إعداداتها هنا حتى بدون فرق.</div>'}</div>`;if(adminTab==='results')return `<div class="card"><h3>اعتماد نتيجة مباراة</h3><form class="formgrid" onsubmit="addMatch(event)">${field('البطولة',`<select id="mt" onchange="syncTeams()" required>${option(db.tournaments,t=>t.name)}</select>`)}${field('المباراة المجدولة','<select id="scheduledMatch" onchange="selectScheduledMatch()" required></select>')}<div class="field wide"><p id="autoMatchInfo" class="note">اختار البطولة ثم المباراة؛ الدور والفريقان يتحددوا تلقائيًا.</p></div><input type="hidden" id="stage"><input type="hidden" id="ma"><input type="hidden" id="mb">${field('أشواط الفريق الأول <span id="scoreTeamA" style="display:block;color:#8dc4ff;font-size:15px;font-weight:bold">—</span>','<input type="number" id="sa" min="0" max="99" required>')}${field('أشواط الفريق الثاني <span id="scoreTeamB" style="display:block;color:#8dc4ff;font-size:15px;font-weight:bold">—</span>','<input type="number" id="sb" min="0" max="99" required>')}<div class="field wide"><button class="primary" ${db.teams.length<2?'disabled':''}>اعتماد النتيجة</button></div></form><p class="mini">النتيجة هنا عدد الأشواط للفريقين في مباراة من مجموعة واحدة؛ لا يُسجّل التعادل. التاي بريك يُحسم لصالح الفائز في النتيجة النهائية.</p></div><h3 style="margin-top:25px">النتائج المسجلة</h3>${db.matches.slice().reverse().map(m=>`<div class="match"><span>${esc(tname(m.a))} <b>${m.sa} : ${m.sb}</b> ${esc(tname(m.b))}</span><button class="danger" onclick="delMatch('${m.id}')">حذف</button></div>`).join('')||'<div class="empty">لا توجد نتائج.</div>'}`;if(adminTab==='champions')return `<div class="card"><h3>اعتماد بطل ووصيف البطولة</h3><form class="formgrid" onsubmit="setChampions(event)">${field('البطولة',`<select id="ct" onchange="syncChampions()">${option(db.tournaments,t=>t.name)}</select>`)}${field('البطل','<select id="champ"></select>')}${field('الوصيف','<select id="runner"></select>')}<div class="field" style="align-self:end"><button class="primary" ${!db.tournaments.length?'disabled':''}>اعتماد الأبطال</button></div></form><p class="mini">نقاط البطل والوصيف تُضاف مرة واحدة لكل لاعب، وتتحدث تلقائيًا عند تعديل الاعتماد.</p></div>`;if(adminTab==='settings')return `<div class="card"><h3>نقاط تصنيف اللاعبين حسب أعلى دور وصلوا إليه</h3><p class="note">النقاط غير تراكمية داخل البطولة، وتُجمع بين البطولات. الفوز في المجموعات = 3 نقاط لترتيب المجموعة فقط.</p><form class="formgrid" onsubmit="settingsSave(event)">${[['participation','المشاركة في البطولة'],['round16','دخول دور الـ16'],['quarter','دخول دور الـ8'],['semi','دخول نصف النهائي'],['runnerUp','الوصيف'],['champion','البطل']].map(([k,v])=>field(v,`<input type="number" min="0" max="100000" id="set_${k}" value="${Number(db.settings[k]??seed.settings[k])}" required>`)).join('')}<div class="field wide"><button class="primary">حفظ وإعادة احتساب التصنيف</button></div></form></div>`;return `<div class="card"><h3>النسخ الاحتياطي ونقل البيانات</h3><p class="muted">صدّر نسخة JSON للاحتفاظ بالبيانات أو استوردها على جهاز آخر. الاستيراد يستبدل البيانات الحالية.</p><div class="row"><button class="primary" onclick="exportBackup()">تنزيل نسخة JSON</button><label style="max-width:340px">استيراد ملف JSON<input type="file" accept=".json,application/json" onchange="importBackup(event)"></label></div></div>`}
+function groupLetters(n){return Array.from({length:n},(_,i)=>String.fromCharCode(65+i))}
+function isFair24(t){return formatOf(t)==='groups_knockout'&&['auto_remaining','top2_best4third'].includes(t.qualifyMode)}
+function fair24Rank(tid){
+ const t=tour(tid);if(!isFair24(t))return {ready:false,reason:'اختار التأهل التلقائي من إعدادات البطولة'};
+ const count=Number(t.groupCount)||2,start=Number(t.koStart)||8,base=Number(t.baseQualifiers)||2,letters=groupLetters(count);
+ if(![2,4,8,16].includes(start)||base<1||base*count>start)return {ready:false,reason:'عدد المتأهلين الأساسيين أكبر من مقاعد الدور الإقصائي'};
+ const members=db.teams.filter(x=>x.tid===tid),expected=Number(t.expectedTeams)||members.length;
+ if(members.length!==expected)return {ready:false,reason:'انتظار اعتماد الفرق: '+members.length+' من '+expected};
+ if(letters.some(g=>members.filter(x=>x.group===g).length<=base))return {ready:false,reason:'عدد الفرق في إحدى المجموعات لا يكفي للتأهل الأساسي والمنافسة على المقاعد الإضافية'};
+ const fixtures=plannedFixtures(tid);
+ if(!fixtures.length)return {ready:false,reason:'جدول المجموعات غير مكتمل'};
+ for(const f of fixtures){if(!db.matches.some(m=>m.tid===tid&&m.stage==='group'&&m.round===f.round&&((m.a===f.a&&m.b===f.b)||(m.a===f.b&&m.b===f.a))))return {ready:false,reason:'انتظار تسجيل كل نتائج المجموعات ('+fixtures.length+' مباراة)'}}
+ const ordered=letters.map(g=>standings(tid,g)),remaining=start-base*count;
+ const compare=(a,b)=>b.points-a.points||((b.gf-b.ga)-(a.gf-a.ga))||b.gf-a.gf;
+ // Choose the best eligible teams at the next unqualified position across groups.
+ const extras=[];for(let rank=base;rank<Math.max(...ordered.map(x=>x.length))&&extras.length<remaining;rank++){
+  const candidates=ordered.flatMap((rows,i)=>rows[rank]?[{...rows[rank],group:letters[i],position:rank+1}]:[]).sort((a,b)=>compare(a,b)||((t.tieDraw||[]).includes(a.id)&&(t.tieDraw||[]).includes(b.id)?t.tieDraw.indexOf(a.id)-t.tieDraw.indexOf(b.id):0)||a.group.localeCompare(b.group));
+  const take=Math.min(remaining-extras.length,candidates.length);
+  if(take>0&&take<candidates.length&&compare(candidates[take-1],candidates[take])===0&&!t.tieDraw?.length)return {ready:false,reason:'تعادل مؤثر على آخر مقعد إضافي؛ يلزم حسمه بقرعة فاصلة إداريًا'};
+  extras.push(...candidates.slice(0,take));
+ }
+ if(extras.length!==remaining)return {ready:false,reason:'عدد الفرق غير كافٍ لإكمال مقاعد التأهل'};
+ const qualified=ordered.flatMap(rows=>rows.slice(0,base).map(x=>x.id)).concat(extras.map(x=>x.id));
+ return {ready:true,qualified,extras,ordered,remaining,base,start,letters};
+}
+function fair24Bracket(tid){
+ const info=fair24Rank(tid);if(!info.ready)return {rounds:[],reason:info.reason};
+ const t=tour(tid),start=info.start,groupOf=id=>team(id)?.group;
+ const ranked=info.qualified.map(id=>{const g=groupOf(id),r=info.ordered[info.letters.indexOf(g)].findIndex(x=>x.id===id);const x=info.ordered[info.letters.indexOf(g)][r];return {...x,group:g,position:r+1}});
+ ranked.sort((a,b)=>a.position-b.position||b.points-a.points||((b.gf-b.ga)-(a.gf-a.ga))||b.gf-a.gf||a.group.localeCompare(b.group));
+ const high=ranked.slice(0,start/2).map(x=>x.id),low=ranked.slice(start/2).map(x=>x.id);
+ const used=new Set(),pairs=[];
+ function assign(i){if(i===high.length)return true;const options=low.filter(x=>!used.has(x)&&groupOf(x)!==groupOf(high[i]));for(const x of options){used.add(x);pairs.push([high[i],x]);if(assign(i+1))return true;pairs.pop();used.delete(x)}return false}
+ if(!assign(0))return {rounds:[],reason:'تعذر تجنب مواجهات نفس المجموعة في أول دور؛ يلزم تعديل القرعة يدويًا'};
+ let active=pairs.flat(),rounds=[];const totalRounds=Math.log2(start);
+ for(let r=0;r<totalRounds;r++){
+  const stage='GK-'+r,fixtures=[];
+  if(r===0){for(const [a,b] of pairs)fixtures.push({a,b,stage,round:1})}
+  else {for(let i=0;i<active.length;i+=2)fixtures.push({a:active[i],b:active[i+1],stage,round:r+1})}
+  rounds.push(fixtures);const next=[];
+  for(const f of fixtures){const m=resultFor(tid,stage,f.a,f.b);if(m)next.push(winnerFor(m))}
+  if(next.length!==fixtures.length)break;active=next;
+ }
+ return {rounds,info};
+}
+function runTieDraw(tid){
+ const t=tour(tid);if(!t||!adminSession||!isFair24(t))return;
+ if(db.matches.some(m=>m.tid===tid&&m.stage.startsWith('GK-')))return alert('لا يمكن تغيير القرعة بعد بدء نتائج خروج المغلوب');
+ const info=fair24Rank(tid);
+ if(info.ready&&!confirm('إعادة إجراء القرعة الفاصلة قد تغيّر المتأهلين. هل تريد الاستمرار؟'))return;
+ if(!info.ready&&!info.reason.includes('تعادل مؤثر'))return alert('لا توجد قرعة فاصلة مطلوبة حاليًا: '+info.reason);
+ const ids=db.teams.filter(x=>x.tid===tid).map(x=>x.id);
+ for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]]}
+ t.tieDraw=ids;t.tieDrawAt=new Date().toISOString();save();alert('تم إجراء القرعة الفاصلة وحفظها. راجع المتأهلين قبل النشر');
+}
+function fair24View(tid){const data=fair24Bracket(tid),info=fair24Rank(tid);let html='<h3>التأهل التلقائي: '+Number(tour(tid)?.baseQualifiers||2)+' من كل مجموعة + أفضل الفرق للمقاعد المتبقية</h3>';
+ if(!info.ready)return html+`<div class="note">${esc(info.reason)}. لا تُنشأ القرعة قبل اكتمال الشروط.</div>`+(adminSession&&info.reason.includes('تعادل مؤثر')?`<button class="primary" onclick="runTieDraw('${tid}')">إجراء القرعة الفاصلة وحفظها</button>`:'');
+ html+=`<p class="note">${info.base} من كل مجموعة (${info.base*info.letters.length} فريق) + ${info.remaining} من أفضل الفرق غير المتأهلة = ${info.start} فريق.</p>`;
+ if(adminSession&&tour(tid)?.tieDrawAt)html+=`<p class="mini">تم حسم التعادل بقرعة إدارية محفوظة: ${esc(tour(tid).tieDrawAt)}</p>`; if(info.extras.length)html+='<h3>الفرق المتأهلة بالمقاعد الإضافية</h3><div class="tablewrap"><table><thead><tr><th>المجموعة</th><th>الفريق</th><th>المركز</th><th>النقاط</th><th>الفارق</th></tr></thead><tbody>'+info.extras.map(x=>`<tr><td>${esc(x.group)}</td><td>${esc(tname(x.id))}</td><td>${x.position}</td><td>${x.points}</td><td>${x.gf-x.ga}</td></tr>`).join('')+'</tbody></table></div>';
+ for(const [i,round] of data.rounds.entries()){const n=info.start/Math.pow(2,i);html+=`<h3 style="margin-top:18px">${n===2?'النهائي':n===4?'نصف النهائي':n===8?'دور الـ8':'دور الـ16'}</h3>`;for(const f of round){const m=resultFor(tid,f.stage,f.a,f.b);html+=`<div class="match"><span>${esc(tname(f.a))}</span><span class="score">${m?m.sa+' : '+m.sb:'—'}</span><span>${esc(tname(f.b))}</span>${liveTag(tid,f.stage,f.a,f.b,0)}${!m?liveControl(tid,f.stage,f.a,f.b,0):''}</div>`}}
+ return html+stBracketProgress(tid,data.rounds);
+}
+function groupConfigPanel(t){
+ const count=Math.max(2,Math.min(16,Number(t.groupCount)||2)),start=Number(t.koStart)||8;
+ const q=t.groupQualifiers||{};
+ const fields=groupLetters(count).map(g=>`<div class="field"><label>المتأهلون من المجموعة ${g}</label><input type="number" id="gq_${t.id}_${g}" min="0" max="128" value="${Number.isInteger(Number(q[g]))?Number(q[g]):Math.floor(start/count)+(groupLetters(count).indexOf(g)<start%count?1:0)}"></div>`).join('');
+ const current=db.teams.filter(x=>x.tid===t.id);
+ return `<div class="card" style="margin:15px 0;background:#0b2136"><h3>⚙️ إعدادات المجموعات والتأهل — قبل التسجيل أو بعده</h3><p class="note">اختار عدد المتأهلين الأساسيين من كل مجموعة، والموقع يحسب المقاعد الإضافية تلقائيًا لأي عدد فرق ومجموعات مناسب.</p><div class="field"><label>طريقة التأهل</label><select id="mode_${t.id}" onchange="document.getElementById('qualifiers_${t.id}').style.display=this.value==='auto_remaining'?'none':'grid'"><option value="manual" ${!isFair24(t)?'selected':''}>عدد ثابت لكل مجموعة (يدوي)</option><option value="auto_remaining" ${isFair24(t)?'selected':''}>تأهل أساسي + أفضل الفرق للمقاعد المتبقية تلقائيًا</option></select></div><div class="field"><label>المتأهلون الأساسيون من كل مجموعة</label><select id="base_${t.id}"><option value="1" ${Number(t.baseQualifiers||2)===1?'selected':''}>الأول فقط</option><option value="2" ${Number(t.baseQualifiers||2)===2?'selected':''}>الأول والثاني</option></select></div><div class="formgrid">${field('عدد المجموعات' ,`<input type="number" id="gc_${t.id}" min="2" max="16" value="${count}" oninput="refreshGroupFields('${t.id}')">`)}${field('بداية خروج المغلوب',`<select id="ko_${t.id}" onchange="refreshGroupFields('${t.id}')">${[16,8,4,2].map(n=>`<option value="${n}" ${start===n?'selected':''}>${n===16?'دور الـ16':n===8?'دور الـ8':n===4?'نصف النهائي':'النهائي'} — ${n} فريق</option>`).join('')}</select>`)}${field('العدد المتوقع للفرق',`<input type="number" id="expected_${t.id}" min="2" max="256" value="${Number(t.expectedTeams)||30}">`)}</div><div id="qualifiers_${t.id}" class="formgrid" style="margin-top:12px;display:${isFair24(t)?'none':'grid'}">${fields}</div><p class="mini">لازم مجموع المتأهلين يساوي عدد فرق أول دور. الإعدادات بتتحفظ حتى لو مفيش فرق مسجلة.</p><div class="row"><button class="primary" onclick="saveGroupConfig('${t.id}')">حفظ إعدادات الخطة</button><button onclick="randomizeGroups('${t.id}')" ${current.length<2?'disabled':''}>توزيع الفرق عشوائيًا</button></div><p class="mini">تنبيه: محرك خروج المغلوب الحالي ما زال يعتمد مساري A وB؛ إعدادات المجموعات المتعددة محفوظة للمعاينة والتحضير، وليست قرعة خروج مغلوب مكتملة. لا تنشر قرعة هذا النظام قبل استكمال المحرك.</p>${current.length?`<p>التوزيع الحالي: ${groupLetters(count).map(g=>g+': '+current.filter(x=>x.group===g).length).join(' | ')}</p>`:'<div class="empty">لا توجد فرق مسجلة بعد. يمكنك حفظ الخطة الآن.</div>'}</div>`;
+}
+function refreshGroupFields(id){
+ const count=Math.max(2,Math.min(16,Number($('gc_'+id)?.value)||2)),start=Number($('ko_'+id)?.value)||8;
+ const target=$('qualifiers_'+id);if(!target)return;
+ const existing={};for(const el of target.querySelectorAll('input'))existing[el.id.split('_').at(-1)]=el.value;
+ target.innerHTML=groupLetters(count).map((g,i)=>`<div class="field"><label>المتأهلون من المجموعة ${g}</label><input type="number" id="gq_${id}_${g}" min="0" max="128" value="${existing[g]??(Math.floor(start/count)+(i<start%count?1:0))}"></div>`).join('');
+}
+function saveGroupConfig(id){
+ const t=tour(id);if(!t||!adminSession)return;
+ if(drawPublished(t))return alert('اخفِ القرعة قبل تعديل إعداداتها');
+ if(db.matches.some(m=>m.tid===id))return alert('لا يمكن تعديل إعدادات التأهل بعد تسجيل نتائج المباريات');
+ const count=Number($('gc_'+id)?.value),start=Number($('ko_'+id)?.value),expected=Number($('expected_'+id)?.value);
+ if(!Number.isInteger(count)||count<2||count>16||![2,4,8,16].includes(start)||!Number.isInteger(expected)||expected<2||expected>256)return alert('راجع عدد المجموعات والفرق والدور الأول');
+ const fair=$('mode_'+id)?.value==='auto_remaining',base=Number($('base_'+id)?.value)||2;if(fair&&base*count>start)return alert('عدد المتأهلين الأساسيين أكبر من مقاعد الدور الإقصائي');
+ const q={};for(const g of groupLetters(count)){const n=Number($('gq_'+id+'_'+g)?.value);if(!Number.isInteger(n)||n<0)return alert('أدخل عددًا صحيحًا غير سالب للمتأهلين من المجموعة '+g);q[g]=n}
+ if(!fair&&Object.values(q).reduce((a,b)=>a+b,0)!==start)return alert('إجمالي المتأهلين لازم يساوي '+start+' فريق');
+ if(start>expected)return alert('عدد المتأهلين أكبر من إجمالي الفرق المتوقع');
+ const members=db.teams.filter(x=>x.tid===id);
+ if(members.some(x=>!groupLetters(count).includes(x.group)))return alert('فيه فرق في مجموعات خارج العدد الجديد؛ عدّل توزيعها أولًا');
+ for(const g of groupLetters(count)){const size=members.filter(x=>x.group===g).length;if(!fair&&size&&q[g]>size)return alert('عدد المتأهلين من المجموعة '+g+' أكبر من عدد فرقها الحالي')}
+ delete t.tieDraw;delete t.tieDrawAt;Object.assign(t,{groupCount:count,koStart:start,groupQualifiers:q,expectedTeams:expected,qualifyMode:fair?'auto_remaining':'manual',baseQualifiers:base});save();alert('تم حفظ إعدادات الخطة');
+}
+function randomizeGroups(id){
+ const t=tour(id);if(!t||!adminSession)return;
+ if(drawPublished(t)||db.matches.some(m=>m.tid===id))return alert('لا يمكن إعادة التوزيع بعد نشر القرعة أو تسجيل نتائج');
+ const members=db.teams.filter(x=>x.tid===id),count=Number(t.groupCount)||2;
+ if(members.length<2)return alert('لازم تسجيل فريقين على الأقل');
+ if(!confirm('توزيع عشوائي جديد لكل الفرق المسجلة في هذه البطولة؟'))return;
+ const arr=members.slice();for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}
+ arr.forEach((tm,i)=>tm.group=groupLetters(count)[i%count]);save();
+}
+function normalizePlayerName(n){return String(n||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/\s+/g,' ').trim().toLocaleLowerCase('ar')}function shortPlayerId(id){return "ST-"+String(id||"").replace(/-/g,"").slice(0,10).toUpperCase()}async function copyPlayerId(id){try{await navigator.clipboard.writeText(shortPlayerId(id));alert('تم نسخ Player ID')}catch{prompt('انسخ Player ID:',shortPlayerId(id))}}function addPlayer(e){e.preventDefault();let name=$('pn').value.trim();if(!name)return;if(db.players.some(p=>normalizePlayerName(p.name)===normalizePlayerName(name)))return alert('الاسم مسجل بالفعل؛ استخدم ملف اللاعب الموجود');db.players.push({id:uid(),name});save()}async function addTour(e){
+ e.preventDefault();if(!adminSession)return alert('الإدارة فقط');
+ const form=e.target,button=form.querySelector('button.primary'),file=$('stTourImageFile')?.files?.[0];
+ const data={id:uid(),name:$('tn').value.trim(),date:$('td').value,status:$('ts').value,fee:Number($('tfee').value),format:$('tformat').value,swissRounds:Number($('swissRounds').value),drawPublished:false};
+ if(!data.name)return alert('اكتب اسم البطولة');
+ if(button)button.disabled=true;
+ try{if(file)data.imagePath=await stUploadTourImage(data.id,file);
+ db.tournaments.push(data);save();
+ }catch(err){alert('تعذر إنشاء البطولة: '+(err.message||err));}
+ finally{if(button&&button.isConnected)button.disabled=false;}
+}
+function stTourImage(t,mode){if(!t?.imagePath)return '';const url=stSiteMediaUrl(t.imagePath);return '<img src="'+esc(url)+'" alt="بوستر '+esc(t.name)+'" loading="lazy" style="display:block;width:100%;height:'+(mode==='card'?'190px':'auto')+';max-height:'+(mode==='card'?'190px':'460px')+';object-fit:contain;border-radius:12px;margin-bottom:15px;background:#071322" onerror="this.style.display=\'none\'">'}
+function stTourPreviewImage(input){const el=$('stTourPreview');if(!el)return;el.replaceChildren();const file=input?.files?.[0];if(!file)return;try{stValidateTourImage(file)}catch(e){alert(e.message);input.value='';return;}const img=document.createElement('img');img.style.cssText='max-width:100%;max-height:220px;object-fit:contain;margin-top:12px;border-radius:10px';const url=URL.createObjectURL(file);img.src=url;img.onload=()=>URL.revokeObjectURL(url);el.append(img);}
+function stValidateTourImage(file){if(!file||!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>5*1024*1024)throw Error('اختار صورة JPG أو PNG أو WEBP بحجم أقل من 5 ميجابايت');}
+async function stUploadTourImage(id,file){stValidateTourImage(file);if(!cloud)throw Error('Supabase غير متصل');const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type],path='tournaments/'+id+'/'+crypto.randomUUID()+'.'+ext;const {error}=await cloud.storage.from('st-site-media').upload(path,file,{contentType:file.type,cacheControl:'3600',upsert:false});if(error)throw Error('فشل رفع الصورة: '+error.message);return path;}
+function stChangeTourImage(id){if(!adminSession)return;const t=tour(id);if(!t)return;const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png,image/webp';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{const path=await stUploadTourImage(id,file);t.imagePath=path;save();}catch(err){alert('تعذر تغيير صورة البطولة: '+(err.message||err));}};input.click();}
+function editTourFormat(id){const t=tour(id);if(!t)return;const values=Object.entries(FORMATS).map(([k,v])=>k+' : '+v).join('\n');const format=prompt('اختر رمز النظام:\n'+values,formatOf(t));if(!format||!FORMATS[format])return;if(db.matches.some(m=>m.tid===id))return alert('لا يمكن تغيير النظام بعد تسجيل النتائج؛ احذف النتائج أولًا');t.format=format;save()}
+function addTeam(e){e.preventDefault();const tid=$('teamTour').value,p1=$('p1').value,p2=$('p2').value,group=$('grp').value.trim().toUpperCase();if(p1===p2)return alert('اختار لاعبين مختلفين');if(db.teams.some(t=>t.tid===tid&&t.players.includes(p1)&&t.players.includes(p2)))return alert('الفريق مسجل في البطولة');db.teams.push({id:uid(),tid,group,players:[p1,p2]});save()}function pendingResultFixtures(tid){
+ const t=tour(tid);if(!t)return [];
+ const f=formatOf(t),out=[];
+ const add=(x,stage,label)=>{if(!x?.a||!x?.b)return;if(stAdvancement(tid,stage,x.a,x.b))return;const done=db.matches.some(m=>m.tid===tid&&m.stage===stage&&m.a===x.a&&m.b===x.b&&(stage!=='group'||Number(m.round)===Number(x.round)));if(!done)out.push({...x,stage,label});};
+ if(!['single_elimination','double_elimination'].includes(f))for(const x of plannedFixtures(tid))add(x,'group',f==='league'||f==='round_robin'?'الدوري - الجولة '+x.round:'المجموعة '+(x.group||'')+' - الجولة '+x.round);
+ if(isFair24(t)){(fair24Bracket(tid).rounds||[]).forEach((round,i)=>round.forEach(x=>add(x,x.stage,'خروج المغلوب - '+(i===0?'دور الـ'+Number(t.koStart||16):round.length===1?'النهائي':round.length===2?'نصف النهائي':'دور الـ'+round.length*2))));}
+ else if(f==='single_elimination'||f==='double_elimination'){const rounds=f==='single_elimination'?directBracket(tid):doubleBracket(tid);rounds.forEach((round,i)=>round.forEach(x=>add(x,x.stage,'خروج المغلوب - الدور '+(i+1))));}
+ else if(['st30','groups_knockout'].includes(f)){
+ for(const g of [...new Set(db.teams.filter(x=>x.tid===tid).map(x=>x.group).filter(Boolean))]){const rounds=knockoutBracket(tid,g);rounds.forEach((round,i)=>round.forEach(x=>add(x,x.stage,'خروج المغلوب '+g+' - '+(round.length===1?'النهائي':round.length===2?'نصف النهائي':'دور الـ'+round.length*2))));}
+ if(f==='st30'){const winners=['A','B'].map(g=>{const rounds=knockoutBracket(tid,g),last=rounds.at(-1)?.[0],m=last&&resultFor(tid,last.stage,last.a,last.b);return m?winnerFor(m):null});if(winners.every(Boolean))add({a:winners[0],b:winners[1]},'ST-Final','النهائي العام');}
+ }
+ return out;
+}
+function syncTeams(){const el=$('scheduledMatch');if(!el)return;const fixtures=pendingResultFixtures($('mt')?.value).filter(x=>!team(x.a)?.withdrawn&&!team(x.b)?.withdrawn);el.innerHTML=fixtures.length?fixtures.map((x,i)=>`<option value="${i}">${esc(x.label)} | ${esc(tname(x.a))} × ${esc(tname(x.b))}</option>`).join(''):'<option value="">لا توجد مباريات جاهزة لتسجيل النتيجة</option>';el.disabled=!fixtures.length;selectScheduledMatch();}
+function selectScheduledMatch(){const fixtures=pendingResultFixtures($('mt')?.value).filter(x=>!team(x.a)?.withdrawn&&!team(x.b)?.withdrawn),x=fixtures[Number($('scheduledMatch')?.value)];for(const [id,v] of [['stage',x?.stage||''],['ma',x?.a||''],['mb',x?.b||'']])if($(id))$(id).value=v;if($('autoMatchInfo'))$('autoMatchInfo').textContent=x?x.label+' | '+tname(x.a)+' × '+tname(x.b):'لا توجد مباريات جاهزة؛ أكمل نتائج الدور السابق أو راجع القرعة.';if($('scoreTeamA'))$('scoreTeamA').textContent=x?tname(x.a):'—';if($('scoreTeamB'))$('scoreTeamB').textContent=x?tname(x.b):'—';}
+function addMatch(e){e.preventDefault();const tid=$('mt').value,a=$('ma').value,b=$('mb').value,sa=Number($('sa').value),sb=Number($('sb').value),stage=$('stage').value;const chosen=pendingResultFixtures(tid).filter(x=>!team(x.a)?.withdrawn&&!team(x.b)?.withdrawn).find(x=>x.a===a&&x.b===b&&x.stage===stage&&String(x.round||'')===String((pendingResultFixtures(tid).filter(x=>!team(x.a)?.withdrawn&&!team(x.b)?.withdrawn)[Number($('scheduledMatch')?.value)]||{}).round||''));if(!chosen)return alert('المباراة غير متاحة حاليًا، حدّث الصفحة واختار مباراة مجدولة');const ta=team(a),tb=team(b);if(!ta||!tb||a===b||ta.players.some(p=>tb.players.includes(p)))return alert('اختار فريقين مختلفين بدون لاعب مشترك');if(stage==='group'&&['st30','groups_knockout'].includes(formatOf(tour(tid)))&&ta.group!==tb.group)return alert('في دور المجموعات لازم الفريقين يكونوا من نفس المجموعة');if(stage.startsWith('GK-')){const r=Number(stage.split('-')[1]),allowed=fair24Bracket(tid).rounds?.[r]||[];if(!isFair24(tour(tid))||!allowed.some(f=>(f.a===a&&f.b===b)||(f.a===b&&f.b===a)))return alert('المواجهة غير موجودة في قرعة دور خروج المغلوب أو الدور السابق لم يكتمل')}if(stage.startsWith('KO-')){const g=stage.split('-')[1],round=Number(stage.split('-')[2]),allowed=knockoutBracket(tid,g)[round]||[];if(!allowed.some(f=>(f.a===a&&f.b===b)||(f.a===b&&f.b===a)))return alert('المواجهة غير متاحة في قرعة خروج المغلوب أو لم تكتمل نتائج الدور السابق')}if(stage.startsWith('DIRECT-')){const round=Number(stage.split('-')[1]),allowed=directBracket(tid)[round]||[];if(!allowed.some(f=>(f.a===a&&f.b===b)||(f.a===b&&f.b===a)))return alert('المواجهة ليست في القرعة')}if(stage.startsWith('DE-')){const round=Number(stage.split('-')[1]),allowed=doubleBracket(tid)[round]||[];if(!allowed.some(f=>(f.a===a&&f.b===b)||(f.a===b&&f.b===a)))return alert('المواجهة ليست في قرعة الفرصتين')}if(stage==='ST-Final'){const winners=['A','B'].map(g=>{const rounds=knockoutBracket(tid,g),last=rounds.at(-1);if(!last||last.length!==1)return null;const f=last[0],m=db.matches.find(x=>x.tid===tid&&x.stage===f.stage&&((x.a===f.a&&x.b===f.b)||(x.a===f.b&&x.b===f.a)));return m?(m.sa>m.sb?m.a:m.b):null});if(!winners.every(Boolean)||!winners.includes(a)||!winners.includes(b))return alert('النهائي متاح فقط بعد تحديد بطل كل مجموعة')}if(stage==='group'&&isFair24(tour(tid))&&db.matches.some(m=>m.tid===tid&&m.stage.startsWith('GK-')))return alert('لا يمكن إضافة نتائج مجموعات بعد بدء خروج المغلوب');if(stage==='group'&&!plannedFixtures(tid).some(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a)))return alert('المواجهة غير موجودة في جدول الجولات الأربع');if(!Number.isInteger(sa)||!Number.isInteger(sb)||sa===sb||sa<0||sb<0||sa>99||sb>99)return alert('نتيجة غير صحيحة، لا يسمح بالتعادل');const pairMatches=db.matches.filter(m=>m.tid===tid&&m.stage===stage&&((m.a===a&&m.b===b)||(m.a===b&&m.b===a)));const scheduled=stage==='group'?plannedFixtures(tid).filter(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a)):[];const available=scheduled.find(x=>!pairMatches.some(m=>m.round===x.round));if(stage==='group'&&!available)return alert('هذه المواجهة غير مجدولة أو تم تسجيل كل مبارياتها');if(stage!=='group'&&pairMatches.length)return alert('المباراة دي مسجلة بالفعل في نفس الدور');db.matches.push({id:uid(),tid,a,b,sa,sb,stage,round:stage==='group'?available.round:undefined});if(db.liveMatches)delete db.liveMatches[liveKey(tid,stage,a,b,stage==='group'?available.round:0)];if(stage==='ST-Final'||(stage.startsWith('GK-')&&Number(stage.split('-')[1])===Math.log2(Number(tour(tid)?.koStart||16))-1)){const tt=tour(tid);tt.champion=sa>sb?a:b;tt.runnerUp=sa>sb?b:a;}save()}function syncChampions(){let ts=db.teams.filter(t=>t.tid===$('ct')?.value);for(const id of ['champ','runner'])if($(id))$(id).innerHTML='<option value="">غير محدد</option>'+option(ts,t=>tname(t.id))}function setChampions(e){e.preventDefault();let t=tour($('ct').value),a=$('champ').value,b=$('runner').value;if(!t)return;if(a&&b&&a===b)return alert('البطل والوصيف لازم مختلفين');if(isFair24(t)){const rounds=fair24Bracket(t.id).rounds||[],final=rounds.at(-1)?.[0],m=final&&resultFor(t.id,final.stage,final.a,final.b);if(!m)return alert('يجب تسجيل نتيجة النهائي أولًا لاعتماد البطل والوصيف تلقائيًا');const winner=winnerFor(m),loser=winner===m.a?m.b:m.a;if(a!==winner||b!==loser)return alert('البطل والوصيف لازم يطابقوا نتيجة النهائي المعتمدة');}t.champion=a||null;t.runnerUp=b||null;save()}function settingsSave(e){e.preventDefault();for(const k of ['participation','round16','quarter','semi','runnerUp','champion'])db.settings[k]=Number($('set_'+k).value);save()}async function delMatch(id){
+ if(!adminSession)return alert('يجب تسجيل الدخول للإدارة أولًا');
+ if(!confirm('حذف النتيجة وإعادة احتساب الترتيب؟'))return;
+ const {error}=await cloud.rpc('st_admin_delete_match',{p_match_id:id});
+ if(error)return alert('تعذر حذف النتيجة: '+error.message);
+ await loadCloud();
+}
+async function delPlayer(id){
+  if(!adminSession)return alert('يجب تسجيل الدخول للإدارة أولًا');
+  const p=player(id);
+  if(!p)return alert('اللاعب غير موجود؛ حدّث الصفحة');
+  if(db.teams.some(t=>t.players.includes(id)))return alert('لا يمكن حذف اللاعب لأنه مرتبط بفريق؛ احذف الارتباطات أولًا');
+  if(!confirm('حذف اللاعب '+p.name+' وفك ربط رقم موبايله؟\nلن يمكن التراجع عن العملية.'))return;
+  const {error}=await cloud.rpc('st_admin_delete_player',{p_player_id:id});
+  if(error)return alert('تعذر حذف اللاعب: '+error.message);
+  await loadCloud();
+  await loadAdminPlayerPhones();
+  alert('تم حذف اللاعب وفك ربط رقم موبايله بنجاح');
+}
+// ST: preserve historical results and player IDs when a team withdraws.
+function stToggleTeamWithdrawal(id){
+ if(!adminSession)return alert('سجل دخول الإدارة أولًا');
+ const t=team(id);if(!t)return alert('الفريق غير موجود');
+ const played=db.matches.filter(m=>m.tid===t.tid&&(m.a===id||m.b===id));
+ const next=!t.withdrawn;
+ const msg=next
+  ?'تأكيد انسحاب '+tname(id)+'؟\nالنتائج السابقة ('+played.length+' مباراة) ستظل محفوظة. لن تظهر للفريق مباريات جديدة جاهزة للتسجيل.\nفي خروج المغلوب يجب حسم التأهل إداريًا، ولن يتم منح فوز تلقائي.'
+  :'إلغاء انسحاب الفريق وإعادته إلى قائمة المباريات الجاهزة؟';
+ if(!confirm(msg))return;
+ t.withdrawn=next;
+ t.withdrawnAt=next?new Date().toISOString():null;
+ save();
+}
+async function delTeam(id){
+ if(!adminSession)return alert('يجب تسجيل الدخول للإدارة أولًا');
+ if(!confirm('حذف الفريق؟'))return;
+ const {error}=await cloud.rpc('st_admin_delete_team',{p_team_id:id});
+ if(error)return alert('تعذر حذف الفريق: '+error.message);
+ await loadCloud();
+}
+async function delTour(id){
+ if(!adminSession)return alert('يجب تسجيل الدخول للإدارة أولًا');
+ if(!confirm('حذف البطولة؟'))return;
+ const {error}=await cloud.rpc('st_admin_delete_tournament',{p_tournament_id:id});
+ if(error)return alert('تعذر حذف البطولة: '+error.message);
+ await loadCloud();
+}
+function exportBackup(){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.href=url;a.download='ST-Padel-Backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}function importBackup(e){const f=e.target.files?.[0];if(!f)return;f.text().then(s=>{const d=JSON.parse(s);if(!['players','teams','tournaments','matches'].every(k=>Array.isArray(d[k]))||!d.settings||typeof d.settings!=='object')throw Error('invalid');if(!confirm('استبدال كل البيانات الحالية؟'))return;db={...structuredClone(seed),...d};save()}).catch(()=>alert('ملف النسخة الاحتياطية غير صالح'))}function clearData(){alert('تم تعطيل حذف كل البيانات لحماية اللاعبين والبطولات. استخدم نسخة احتياطية وإجراء إداري منفصل عند الحاجة.')}
+const IPA='mohandmoahmed14@instapay',IPN_LINK='https://ipn.eg/S/mohandmoahmed14/instapay/9IxfNv';
+function registrationNameInput(id){
+ return `<div class="st-name-wrap"><input id="${id}" required minlength="3" maxlength="80" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${id}Suggestions" placeholder="ابدأ كتابة اسم اللاعب" oninput="showRegistrationNames('${id}')" onfocus="showRegistrationNames('${id}')" onkeydown="registrationNameKeys(event,'${id}')"><div id="${id}Suggestions" class="st-name-list hide" role="listbox"></div></div>`;
+}
+function showRegistrationNames(id){
+ const input=$(id),list=$(id+'Suggestions');if(!input||!list)return;
+ const query=normalizePlayerName(input.value||'');
+ list.replaceChildren();
+ if(!query){list.classList.add('hide');input.setAttribute('aria-expanded','false');return;}
+ const matches=db.players.filter(p=>normalizePlayerName(p.name).includes(query)).sort((a,b)=>a.name.localeCompare(b.name,'ar')).slice(0,12);
+ for(const [i,p] of matches.entries()){
+  const choice=document.createElement('button');choice.type='button';choice.className='st-name-choice';choice.setAttribute('role','option');
+  const num=document.createElement('span');num.className='st-name-choice-num';num.textContent=String(i+1)+'.';
+  const name=document.createElement('span');name.textContent=p.name;choice.append(num,name);
+  choice.addEventListener('mousedown',e=>e.preventDefault());
+  choice.addEventListener('click',()=>{input.value=p.name;list.classList.add('hide');input.setAttribute('aria-expanded','false');input.focus();});
+  list.appendChild(choice);
+ }
+ if(!matches.length){const empty=document.createElement('div');empty.className='st-name-empty';empty.textContent='مفيش اسم مطابق — تقدر تكمل كتابة اسم لاعب جديد';list.appendChild(empty);}
+ list.classList.remove('hide');input.setAttribute('aria-expanded','true');
+}
+function registrationNameKeys(event,id){
+ const list=$(id+'Suggestions');if(!list||list.classList.contains('hide'))return;
+ const buttons=[...list.querySelectorAll('button')];
+ if(event.key==='Escape'){list.classList.add('hide');$(id).setAttribute('aria-expanded','false');return;}
+ if(event.key==='ArrowDown'&&buttons.length){event.preventDefault();buttons[0].focus();}
+}
+document.addEventListener('click',e=>{for(const id of ['regP1','regP2']){const input=$(id),list=$(id+'Suggestions');if(input&&list&&!input.parentElement.contains(e.target)){list.classList.add('hide');input.setAttribute('aria-expanded','false');}}});
+function registrationPage(){const choices=db.tournaments.filter(t=>t.status!=='منتهية');const selected=choices.find(t=>t.id===selectedTournament)||choices[0];if(!selected)return '<div class="empty">لا توجد بطولة متاحة للتسجيل حاليًا.</div>';selectedTournament=selected.id;return `<h2>تسجيل فريق في بطولة ST</h2><div class="card"><p class="note">يتم التسجيل للفريق بالكامل (لاعبان) بتحويل واحد عبر InstaPay. الطلب لا يُعتمد إلا بعد مراجعة التحويل من الإدارة.</p><form onsubmit="submitRegistration(event)" class="formgrid">${field('البطولة',`<select id="regTour" onchange="selectedTournament=this.value;render()" required>${choices.map(t=>`<option value="${esc(t.id)}" ${t.id===selected.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>`)}${field('رسوم الفريق بالكامل',`<input value="${Number(selected.fee||0)} جنيه مصري" disabled>`)}${field('اسم اللاعب الأول',registrationNameInput('regP1'))}${field('رقم اللاعب الأول','<input id="regPhone1" type="tel" required inputmode="numeric" maxlength="11" placeholder="01xxxxxxxxx">')}${field('اسم اللاعب الثاني',registrationNameInput('regP2'))}${field('رقم اللاعب الثاني','<input id="regPhone2" type="tel" required inputmode="numeric" maxlength="11" placeholder="01xxxxxxxxx">')}<div class="field wide"><div class="note"><b>حوّل ${Number(selected.fee||0)} جنيه للفريق بالكامل</b><p>عنوان InstaPay: <b>${IPA}</b></p><div class="row"><button type="button" onclick="navigator.clipboard.writeText('${IPA}').then(()=>alert('تم نسخ عنوان الدفع'))">نسخ العنوان</button><a href="${IPN_LINK}" target="_blank" rel="noopener noreferrer" style="color:#a9d5ff">فتح رابط InstaPay ↗</a></div><p class="mini">افتح InstaPay وتأكد من اسم المستفيد والمبلغ قبل التحويل. رفع الإيصال لا يعني تأكيد الدفع.</p></div></div>${field('صورة إيصال التحويل (JPG / PNG / WebP / HEIC / HEIF / DNG حتى 10 ميجابايت)','<input id="regReceipt" type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.dng,image/jpeg,image/png,image/webp,image/heic,image/heif,image/x-adobe-dng" required>')}${field('رقم مرجع العملية (اختياري)','<input id="regReference" maxlength="100">')}<div class="field wide"><button class="primary" id="regSubmit">إرسال طلب الاشتراك للمراجعة</button><p id="regMsg" role="status" class="mini"></p></div></form></div><div class="card" style="margin-top:16px"><h3>متابعة حالة طلب سابق</h3><form onsubmit="checkRequest(event)" class="formgrid">${field('رقم الطلب','<input id="trackCode" required placeholder="الصق رقم الطلب هنا">')}<div class="field" style="align-self:end"><button>استعلام</button></div></form><p id="trackMsg" role="status"></p></div>${submittedCode?`<div class="note"><b>رقم طلبك:</b> <span dir="ltr">${esc(submittedCode)}</span><p>احتفظ به لمتابعة حالة الطلب.</p></div>`:''}`}
+async function submitRegistration(e){
+ e.preventDefault();
+ if(!cloud)return alert('الاتصال بقاعدة البيانات غير متاح');
+ const t=tour($('regTour').value),p1=$('regP1').value.trim(),p2=$('regP2').value.trim(),phone=$('regPhone1').value.trim(),phone2=$('regPhone2').value.trim(),file=$('regReceipt').files?.[0],reference=$('regReference').value.trim(),msg=$('regMsg'),button=$('regSubmit');
+ if(!t||t.status==='منتهية')return alert('البطولة غير متاحة');
+ if(!Number.isInteger(Number(t.fee))||Number(t.fee)<=0)return alert('رسوم اشتراك البطولة غير صحيحة');
+ if(p1.length<2||p2.length<2||normalizePlayerName(p1)===normalizePlayerName(p2))return alert('راجع أسماء اللاعبين');
+ if(!/^01[0125][0-9]{8}$/.test(phone)||!/^01[0125][0-9]{8}$/.test(phone2)||phone===phone2)return alert('اكتب رقم موبايل مصري مختلف لكل لاعب');
+ const types={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',heic:'image/heic',heif:'image/heif',dng:'image/x-adobe-dng'};
+ const ext=file?.name.split('.').pop()?.toLowerCase();
+ if(!file||!types[ext]||!file.size||file.size>10*1024*1024)return alert('ارفع إيصال JPG أو PNG أو WebP أو HEIC أو HEIF أو DNG حتى 10 ميجابايت');
+ const compatible={jpg:['image/jpeg','image/jpg'],jpeg:['image/jpeg','image/jpg'],png:['image/png'],webp:['image/webp'],heic:['image/heic','image/heic-sequence','application/octet-stream'],heif:['image/heif','image/heif-sequence','application/octet-stream'],dng:['image/x-adobe-dng','image/dng','image/tiff','application/octet-stream']};
+ if(file.type&&!compatible[ext].includes(file.type.toLowerCase()))return alert('نوع الملف لا يطابق امتداده');
+ const form=new FormData();
+ form.append('tournament_id',t.id);form.append('player_one',p1);form.append('player_two',p2);form.append('phone',phone);form.append('phone_two',phone2);form.append('reference',reference);form.append('receipt',file);
+ button.disabled=true;msg.textContent='جار رفع الإيصال وتسجيل الطلب...';
+ try{
+  const response=await fetch(SUPABASE_URL+'/functions/v1/st-secure-registration',{method:'POST',headers:{apikey:SUPABASE_KEY},body:form});
+  let result;try{result=await response.json()}catch{throw Error('تعذر قراءة رد السيرفر ('+response.status+')')}
+  if(!response.ok||!result.success)throw Error(result.error||'تعذر إرسال الطلب ('+response.status+')');
+  submittedCode=result.registration_id;
+  msg.textContent='تم إرسال الطلب. احتفظ برقم الطلب الظاهر أدناه.';
+  render();
+ }catch(err){msg.textContent='تعذر إرسال الطلب: '+(err.message||err)}
+ finally{button.disabled=false}
+}
+async function checkRequest(e){e.preventDefault();const code=$('trackCode').value.trim(),msg=$('trackMsg');msg.textContent='جار الاستعلام...';const {data,error}=await cloud.rpc('st_track_registration',{p_code:code});msg.textContent=error?'حدث خطأ أثناء الاستعلام':!data?'رقم الطلب غير صحيح':data==='pending'?'طلبك قيد مراجعة الدفع':data==='approved'?'تم اعتماد الدفع وتسجيل الفريق رسميًا':'تم رفض الطلب، تواصل مع الإدارة';}
+
+function playerAvatar(p,size=42){
+ const path=p?.avatarPath;
+ if(!path || !/^[a-zA-Z0-9_-]+\.(jpg|png|webp)$/.test(path))
+   return `<span style="display:inline-flex;width:${size}px;height:${size}px;border-radius:50%;background:#244766;align-items:center;justify-content:center;flex-shrink:0">👤</span>`;
+ const url=cloud.storage.from('st-player-avatars').getPublicUrl(path).data.publicUrl;
+ return `<img src="${esc(url)}" alt="صورة ${esc(p.name||'اللاعب')} — اضغط للتكبير" loading="lazy" onclick="openPlayerAvatar(this.src,this.alt)" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPlayerAvatar(this.src,this.alt)}" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:50%;flex-shrink:0;cursor:zoom-in" title="اضغط لعرض الصورة كاملة">`;
+}
+function openPlayerAvatar(src,alt){
+ if(!src)return;
+ const overlay=document.createElement('div');
+ overlay.className='st-avatar-lightbox';
+ overlay.setAttribute('role','dialog');
+ overlay.setAttribute('aria-modal','true');
+ overlay.setAttribute('aria-label','عرض صورة اللاعب بالحجم الكامل');
+ overlay.innerHTML=`<button type="button" class="st-avatar-close" aria-label="إغلاق الصورة">×</button><img alt="${esc(alt||'صورة اللاعب')}" src="${esc(src)}">`;
+ const previousFocus=document.activeElement;
+ const close=()=>{document.removeEventListener('keydown',onKey);overlay.remove();previousFocus?.focus?.();};
+ const onKey=e=>{if(e.key==='Escape')close();};
+ overlay.addEventListener('click',e=>{if(e.target===overlay||e.target.closest('.st-avatar-close'))close();});
+ document.addEventListener('keydown',onKey);
+ document.body.appendChild(overlay);
+ overlay.querySelector('button').focus();
+}
+async function changePlayerAvatar(id){
+ if(!adminSession)return alert('الإدارة فقط');
+ const p=player(id);if(!p)return;
+ const dialog=document.createElement('div');
+ dialog.style.cssText='position:fixed;inset:0;background:#000b;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+ dialog.innerHTML=`<div style="background:#10243a;border:1px solid #34516e;border-radius:16px;padding:24px;max-width:430px;width:100%" dir="rtl">
+ <h3>صورة ${esc(p.name)}</h3><p class="mini">JPG أو PNG أو WebP — حتى 10 ميجابايت</p>
+ <input id="stAvatarFile" type="file" accept="image/jpeg,image/png,image/webp">
+ <p id="stAvatarStatus" class="mini"></p><div class="row">
+ <button class="primary" id="stAvatarSave">حفظ الصورة</button>
+ <button id="stAvatarRemove">إزالة الصورة</button>
+ <button id="stAvatarCancel">إلغاء</button></div></div>`;
+ document.body.appendChild(dialog);
+ const status=dialog.querySelector('#stAvatarStatus');
+ const buttons=[...dialog.querySelectorAll('button')];
+ const busy=x=>buttons.forEach(b=>b.disabled=x);
+ dialog.querySelector('#stAvatarCancel').onclick=()=>dialog.remove();
+ dialog.querySelector('#stAvatarSave').onclick=async()=>{
+  const file=dialog.querySelector('#stAvatarFile').files[0];
+  if(!file)return status.textContent='اختار صورة أولًا';
+  const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type];
+  if(!ext||file.size>10485760)return status.textContent='صيغة الصورة غير مدعومة أو حجمها أكبر من 10 ميجابايت';
+  busy(true);status.textContent='جار رفع الصورة...';
+  const path=id+'.'+ext;
+  const {error:uploadError}=await cloud.storage.from('st-player-avatars').upload(path,file,{upsert:true,contentType:file.type,cacheControl:'60'});
+  if(uploadError){status.textContent=uploadError.message;busy(false);return;}
+  const {error}=await cloud.rpc('st_admin_set_player_avatar',{p_player_id:id,p_avatar_path:path});
+  if(error){status.textContent=error.message;busy(false);return;}
+  if(p.avatarPath&&p.avatarPath!==path)await cloud.storage.from('st-player-avatars').remove([p.avatarPath]);
+  dialog.remove();await loadCloud();
+ };
+ dialog.querySelector('#stAvatarRemove').onclick=async()=>{
+  if(!confirm('إزالة صورة اللاعب؟'))return;
+  busy(true);
+  const {error}=await cloud.rpc('st_admin_set_player_avatar',{p_player_id:id,p_avatar_path:null});
+  if(error){status.textContent=error.message;busy(false);return;}
+  if(p.avatarPath)await cloud.storage.from('st-player-avatars').remove([p.avatarPath]);
+  dialog.remove();await loadCloud();
+ };
+}
+
+function openEditPlayer(id){
+  if(!adminSession)return alert('سجّل دخول الإدارة أولًا');
+  const p=player(id);if(!p)return alert('اللاعب غير موجود');
+  document.getElementById('stPlayerEditDialog')?.remove();
+  const overlay=document.createElement('div');
+  overlay.id='stPlayerEditDialog';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML=`<div role="dialog" aria-modal="true" aria-label="تعديل بيانات اللاعب" style="background:#10243a;color:white;border:1px solid #41688c;border-radius:14px;padding:24px;width:min(460px,100%);box-shadow:0 15px 50px #0009" dir="rtl"><h3>تعديل بيانات اللاعب</h3><p class="mini">Player ID: ${esc(shortPlayerId(id))} — لن يتغير</p><form id="stPlayerEditForm"><label style="display:block;margin:12px 0">اسم اللاعب<input id="stEditName" required minlength="2" maxlength="80" style="display:block;width:100%;margin-top:7px" value="${esc(p.name)}"></label><label style="display:block;margin:12px 0">رقم الموبايل<input id="stEditPhone" type="tel" inputmode="numeric" maxlength="11" pattern="01[0125][0-9]{8}" placeholder="01xxxxxxxxx" style="display:block;width:100%;margin-top:7px" value="${esc(adminPlayerPhones[id]||'')}"></label><p class="mini">ترك الرقم فارغًا يلغي ارتباطه باللاعب. تغيير الرقم لا ينقل ملكية رقم مربوط بلاعب آخر.</p><div class="row"><button type="submit" class="primary" id="stEditSave">حفظ التعديل</button><button type="button" id="stEditCancel">إلغاء</button></div><p id="stEditError" role="alert" class="mini"></p></form></div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#stEditCancel').onclick=()=>overlay.remove();
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
+  overlay.querySelector('#stPlayerEditForm').onsubmit=async e=>{
+    e.preventDefault();
+    const name=overlay.querySelector('#stEditName').value.trim();
+    const phone=overlay.querySelector('#stEditPhone').value.trim();
+    const err=overlay.querySelector('#stEditError');
+    if(!name||name.length<2||name.length>80){err.textContent='اكتب اسمًا صحيحًا';return}
+    if(phone&&!/^01[0125][0-9]{8}$/.test(phone)){err.textContent='رقم الموبايل يجب أن يكون 11 رقمًا';return}
+    const btn=overlay.querySelector('#stEditSave');btn.disabled=true;err.textContent='جار الحفظ...';
+    try{
+      const {error}=await cloud.rpc('st_admin_edit_player',{p_player_id:id,p_name:name,p_phone:phone||null});
+      if(error)throw error;
+      overlay.remove();
+      await loadCloud();
+      await loadAdminPlayerPhones();
+      alert('تم تحديث بيانات اللاعب مع الاحتفاظ بنفس Player ID ونقاطه');
+    }catch(ex){err.textContent='تعذر الحفظ: '+(ex.message||String(ex));btn.disabled=false}
+  };
+  overlay.querySelector('#stEditName').focus();
+}
+async function linkLegacyPlayerPhone(id){
+  if(!adminSession)return alert('سجّل دخول الإدارة أولًا');
+  const p=player(id);if(!p)return alert('اللاعب غير موجود');
+  if(adminPlayerPhones[id])return alert('اللاعب مرتبط بالفعل برقم '+adminPlayerPhones[id]);
+  const phone=prompt('اكتب رقم الموبايل المؤكد للاعب: '+p.name+'\nلا تربط الرقم بناءً على تشابه الاسم فقط.');
+  if(phone===null)return;
+  const cleaned=phone.trim();
+  if(!/^01[0125][0-9]{8}$/.test(cleaned))return alert('اكتب رقم موبايل مصري صحيح مكون من 11 رقم');
+  if(!confirm('تأكيد ربط الرقم '+cleaned+' باللاعب '+p.name+' ('+shortPlayerId(id)+')؟\nتأكد من هوية صاحب الرقم قبل الموافقة.'))return;
+  const {error}=await cloud.rpc('st_admin_link_legacy_player_phone',{p_player_id:id,p_phone:cleaned});
+  if(error)return alert('تعذر الربط: '+error.message);
+  await loadAdminPlayerPhones();alert('تم ربط الرقم بنفس Player ID القديم؛ نقاط اللاعب محفوظة.');
+}
+
+// ST: individual player ban management. Database trigger enforces bans on registration.
+function banActive(id){const b=playerBans[id];return !!(b&&!b.revoked_at&&(!b.expires_at||new Date(b.expires_at).getTime()>Date.now()));}
+function banDescription(b){if(!b)return '';if(b.revoked_at)return 'تم فك الحظر';if(b.expires_at&&new Date(b.expires_at).getTime()<=Date.now())return 'انتهى الحظر';return b.expires_at?'محظور حتى '+new Date(b.expires_at).toLocaleString('ar-EG'):'حظر دائم';}
+async function loadPlayerBans(){if(!adminSession||!cloud)return;bansLoading=true;try{const {data,error}=await cloud.rpc('st_admin_list_bans');if(error)throw error;playerBans=Object.fromEntries((data||[]).map(b=>[b.player_id,b]));}catch(err){console.error('Ban loading:',err);playerBans={};}finally{bansLoading=false;if(page==='admin'&&(adminTab==='bans'||adminTab==='players'))render();}}
+function bansAdmin(){const entries=Object.values(playerBans);return `<div class="toolbar"><h2>حظر اللاعبين (${entries.filter(b=>banActive(b.player_id)).length} نشط)</h2><button onclick="loadPlayerBans()">تحديث</button></div><p class="note">الحظر على اللاعب فقط، وليس زميله أو الفريق. ينتهي تلقائيًا في الموعد المحدد. اختر اللاعب من تبويب اللاعبون لإضافة حظر.</p>${bansLoading?'<p>جار التحميل...</p>':''}${entries.length?entries.map(b=>`<div class="match"><div><b>${esc(player(b.player_id)?.name||b.player_id)}</b><div class="mini">${esc(banDescription(b))}</div><div class="mini">السبب: ${esc(b.reason||'غير محدد')}</div></div><button onclick="editPlayerBan('${esc(b.player_id)}')">${banActive(b.player_id)?'تعديل / فك الحظر':'حظر جديد'}</button></div>`).join(''):'<div class="empty">لا توجد سجلات حظر.</div>'}`;}
+async function editPlayerBan(id){if(!adminSession)return;const p=player(id);if(!p)return alert('اللاعب غير موجود');if(banActive(id)&&confirm('اللاعب '+p.name+' محظور بالفعل. هل تريد فك الحظر الآن؟\nموافق = فك الحظر، إلغاء = تعديل المدة')){const {error}=await cloud.rpc('st_admin_set_player_ban',{p_player_id:id,p_unban:true});if(error)return alert(error.message);await loadPlayerBans();return alert('تم فك الحظر عن اللاعب');}
+const duration=prompt('مدة حظر '+p.name+' بالأيام (مثال: 7 أو 30). اكتب 0 للحظر الدائم:','7');if(duration===null)return;const days=Number(duration);if(!Number.isFinite(days)||days<0||days>36500)return alert('اكتب عدد أيام صحيحًا بين 0 و36500');const reason=prompt('سبب الحظر (للأدمن فقط):',playerBans[id]?.reason||'')??'';const expiry=days===0?null:new Date(Date.now()+days*86400000).toISOString();const {error}=await cloud.rpc('st_admin_set_player_ban',{p_player_id:id,p_reason:reason,p_expires_at:expiry,p_unban:false});if(error)return alert('تعذر الحظر: '+error.message);await loadPlayerBans();alert('تم حظر اللاعب بنجاح');}
+
+async function loadAdminPlayerPhones(){if(!adminSession||!cloud)return;adminPhonesLoading=true;adminPhonesError='';if(page==='admin'&&adminTab==='players')render();try{const {data,error}=await cloud.rpc('st_admin_player_phones');if(error)throw error;adminPlayerPhones=Object.fromEntries((data||[]).map(r=>[r.player_id,r.phone]));}catch(err){adminPhonesError=err.message||String(err);adminPlayerPhones={};}finally{adminPhonesLoading=false;if(page==='admin'&&adminTab==='players')render();}}
+async function loadPaymentRequests(){if(!adminSession||!cloud)return;requestLoading=true;const {data,error}=await cloud.from('st_registrations').select('id,code,tournament_id,tournament_name,player_one,player_two,phone,phone_two,fee,receipt_path,reference,status,created_at').order('created_at',{ascending:false});requestLoading=false;if(error){console.error(error);return;}paymentRequests=data||[];if(page==='admin')render();else btns()}
+setInterval(()=>{if(adminSession&&cloud&&!requestLoading)loadPaymentRequests()},30000);
+function paymentsAdmin(){const pending=paymentRequests.filter(r=>r.status==='pending').length;return `<div class="toolbar"><h2>طلبات الاشتراك والمدفوعات (${pending} معلّق)</h2><button onclick="loadPaymentRequests()">تحديث الطلبات</button></div><p class="note">راجع وصول المبلغ فعليًا في حساب InstaPay قبل الموافقة. الإيصال وحده لا يثبت الدفع. الموافقة تضيف اللاعبين والفريق إلى البطولة.</p>${requestLoading?'<p>جار تحميل الطلبات...</p>':''}${paymentRequests.length?paymentRequests.map(r=>`<div class="card" style="margin-bottom:12px"><div class="row"><b>${esc(r.player_one)} / ${esc(r.player_two)}</b><span class="pill">${r.status==='pending'?'بانتظار المراجعة':r.status==='approved'?'مقبول':'مرفوض'}</span></div><p>${esc(r.tournament_name)} · <b>${Number(r.fee)} ج.م</b> · <span dir="ltr">${esc(r.phone)}</span> / <span dir="ltr">${esc(r.phone_two||'غير مسجل')}</span></p><p class="mini">رقم الطلب: <span dir="ltr">${esc(r.code)}</span> · ${esc(new Date(r.created_at).toLocaleString('ar-EG'))}</p><p class="mini">المرجع: ${esc(r.reference||'غير مذكور')}</p><div class="row"><button onclick="viewReceipt('${r.id}')">عرض الإيصال (خاص بالإدارة)</button>${r.status==='pending'?`<button class="primary" onclick="decideRegistration('${r.id}','approve')">تأكيد الدفع واعتماد الفريق</button><button class="danger" onclick="decideRegistration('${r.id}','reject')">رفض الطلب</button>`:''}</div></div>`).join(''):'<div class="empty">لا توجد طلبات بعد.</div>'}`}
+async function viewReceipt(id){const r=paymentRequests.find(x=>x.id===id);if(!r)return;const {data,error}=await cloud.storage.from('st-payment-receipts').createSignedUrl(r.receipt_path,90);if(error)return alert('تعذر فتح الإيصال: '+error.message);window.open(data.signedUrl,'_blank','noopener,noreferrer')}
+async function decideRegistration(id,action){const r=paymentRequests.find(x=>x.id===id);if(!r||r.status!=='pending')return;if(action==='approve'&&!r.phone_two)return alert('لا يمكن اعتماد الطلب: رقم موبايل اللاعب الثاني غير موجود. راجع بيانات التسجيل أولًا.');if(!confirm(action==='approve'?`هل تأكدت من وصول ${r.fee} جنيه لحساب InstaPay؟ سيتم اعتماد الفريق رسميًا.`:'رفض الطلب؟'))return;const {error}=await cloud.rpc(action==='approve'?'st_approve_registration_v2':'st_reject_registration',{p_registration_id:id});if(error)return alert('تعذر تنفيذ العملية: '+error.message);await loadCloud();await loadPaymentRequests();alert(action==='approve'?'تم اعتماد الدفع والفريق بنجاح':'تم رفض الطلب')}
+function editTeamGroup(id){const t=team(id);if(!t)return;const g=prompt('اكتب المجموعة للفريق (مثال A أو B):',t.group||'');if(g===null)return;const val=g.trim().toUpperCase();if(!/^[A-Z0-9]{1,12}$/.test(val))return alert('اكتب مجموعة صحيحة مثل A أو B');t.group=val;save()}
+function editTourFee(id){const t=tour(id);if(!t)return;const n=prompt('رسوم اشتراك الفريق بالكامل (جنيه):',String(t.fee??0));if(n===null)return;const v=Number(n);if(!Number.isSafeInteger(v)||v<0||v>1000000)return alert('أدخل مبلغًا صحيحًا');t.fee=v;save()}
+
+render();initCloud();if(page==='admin'&&adminTab==='results')syncTeams();
+
+function bulkImportTeams(e){e.preventDefault();if(!adminSession)return alert('سجل دخول الإدارة أولًا');const tid=$('bulkTour').value,lines=$('bulkLines').value.trim().split(/\n+/).map(x=>x.trim()).filter(Boolean);if(!tid||!lines.length)return;const errors=[],rows=[],existing=new Set(db.teams.filter(t=>t.tid===tid).map(t=>t.players.slice().sort().join('|')));const playerByName=new Map(db.players.map(p=>[normalizePlayerName(p.name),p.id]));for(let i=0;i<lines.length;i++){const cols=lines[i].split(/[,،;\t]/).map(x=>x.trim());if(cols.length!==3||!cols[0]||!cols[1]||!/^[AB]$/i.test(cols[2])){errors.push('سطر '+(i+1)+': استخدم الاسم، الاسم، A أو B');continue}const names=cols.slice(0,2),keys=names.map(x=>normalizePlayerName(x));if(keys[0]===keys[1]){errors.push('سطر '+(i+1)+': نفس اللاعب مكرر');continue}const ids=keys.map(k=>playerByName.get(k)||'new:'+k),key=ids.slice().sort().join('|');if(existing.has(key)){errors.push('سطر '+(i+1)+': الفريق موجود');continue}existing.add(key);rows.push({names,keys,group:cols[2].toUpperCase()})}if(errors.length)return alert('لم يتم استيراد أي بيانات:\n'+errors.join('\n'));if(!confirm('استيراد '+rows.length+' فريق قديم؟ هذه الطريقة لا تتحقق من دفع InstaPay.'))return;for(const row of rows){const ids=row.keys.map((k,i)=>{let id=playerByName.get(k);if(!id){id=uid();db.players.push({id,name:row.names[i]});playerByName.set(k,id)}return id});db.teams.push({id:uid(),tid,group:row.group,players:ids})}save();alert('تم استيراد '+rows.length+' فريق')}
+
+/* ST STORE V2: catalog, administration, tracking. Checkout intentionally disabled
+   until a trusted receipt-upload endpoint is deployed and verified. */
+const stStore={products:[],variants:[],images:[],shipping:[],settings:null,orders:[],ads:[],sponsors:[],loaded:false,loading:false,adminLoaded:{},language:localStorage.getItem('st_store_lang')==='en'?'en':'ar'};
+const stT=(ar,en)=>stStore.language==='en'?en:ar;
+/* Sponsors are loaded independently of admin forms to avoid wiping in-progress edits. */
+let stPublicSponsorsRequest=null;
+async function stLoadPublicSponsors(){
+ if(!cloud)return;
+ if(stPublicSponsorsRequest)return stPublicSponsorsRequest;
+ stPublicSponsorsRequest=(async()=>{
+  try{
+   const {data,error}=await cloud.from('st_sponsors').select('name,logo_path,website_url,is_active,sort_order').eq('is_active',true).order('sort_order');
+   if(error)throw error;
+   stRenderPublicSponsors(data||[]);
+  }catch(err){console.warn('Sponsors unavailable:',err.message||err);stRenderPublicSponsors([])}
+ })().finally(()=>{stPublicSponsorsRequest=null});
+ return stPublicSponsorsRequest;
+}
+function stRenderPublicSponsors(items){
+ const host=document.getElementById('stPublicSponsors');if(!host)return;
+ const valid=items.filter(s=>s&&s.is_active&&s.name&&s.logo_path);
+ if(!valid.length){host.hidden=true;host.innerHTML='';return}
+ const en=stStore.language==='en';
+ host.innerHTML='<h3>'+ (en?'ST Padel Tour Sponsors':'رعاة ST Padel Tour')+'</h3><div class="st-sponsors-logos">'+valid.map(s=>{
+  const image=esc(stSafeImage('st-site-media',s.logo_path));
+  const name=esc(s.name);
+  const href=typeof s.website_url==='string'&&/^https:\/\/[^\s]+$/i.test(s.website_url)?s.website_url:null;
+  const content='<img src="'+image+'" alt="'+name+'" loading="lazy"><span>'+name+'</span>';
+  return href?'<a class="st-sponsor-item" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">'+content+'</a>':'<div class="st-sponsor-item">'+content+'</div>';
+ }).join('')+'</div>';
+ host.hidden=false;
+}
+
+/* Public advertising carousel; isolated from admin form and store data. */
+let stPublicAdsRequest=null,stPublicAdsItems=[],stPublicAdsIndex=0,stPublicAdsTimer=null;
+async function stLoadPublicAds(){
+ if(!cloud)return;
+ if(stPublicAdsRequest)return stPublicAdsRequest;
+ stPublicAdsRequest=(async()=>{
+  try{
+   const {data,error}=await cloud.from('st_ads').select('title_ar,image_path,target_url,is_active,sort_order').eq('is_active',true).order('sort_order');
+   if(error)throw error;
+   stPublicAdsItems=(data||[]).filter(a=>a&&a.is_active&&a.title_ar&&a.image_path);
+  }catch(err){console.warn('Ads unavailable:',err.message||err);stPublicAdsItems=[];}
+  stPublicAdsIndex=0;stRenderPublicAds();
+ })().finally(()=>{stPublicAdsRequest=null});
+ return stPublicAdsRequest;
+}
+function stRenderPublicAds(){
+ const host=document.getElementById('stPublicAds');if(!host)return;
+ if(stPublicAdsTimer){clearInterval(stPublicAdsTimer);stPublicAdsTimer=null;}
+ if(!stPublicAdsItems.length){host.hidden=true;host.innerHTML='';return;}
+ const en=stStore.language==='en';
+ host.innerHTML='<h3>'+(en?'ST Padel Tour Advertisements':'إعلانات ST Padel Tour')+'</h3><div class="st-ads-frame">'+stPublicAdsItems.map((a,i)=>{
+  const img=esc(stSafeImage('st-site-media',a.image_path)),title=esc(a.title_ar);
+  const content='<img src="'+img+'" alt="'+title+'" loading="lazy"><span>'+title+'</span>';
+  const url=typeof a.target_url==='string'&&/^https:\/\/[^\s]+$/i.test(a.target_url)?a.target_url:null;
+  return url?'<a class="st-ads-slide" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+content+'</a>':'<div class="st-ads-slide">'+content+'</div>';
+ }).join('')+'</div><div class="st-ads-dots">'+stPublicAdsItems.map((_,i)=>'<button type="button" aria-label="إعلان '+(i+1)+'" onclick="stShowPublicAd('+i+')"></button>').join('')+'</div>';
+ host.hidden=false;stShowPublicAd(0);
+ if(stPublicAdsItems.length>1)stPublicAdsTimer=setInterval(()=>{if(!document.hidden)stShowPublicAd((stPublicAdsIndex+1)%stPublicAdsItems.length)},5000);
+}
+function stShowPublicAd(i){
+ if(!stPublicAdsItems.length)return;stPublicAdsIndex=((i%stPublicAdsItems.length)+stPublicAdsItems.length)%stPublicAdsItems.length;
+ document.querySelectorAll('#stPublicAds .st-ads-slide').forEach((el,n)=>el.classList.toggle('st-active',n===stPublicAdsIndex));
+ document.querySelectorAll('#stPublicAds .st-ads-dots button').forEach((el,n)=>el.classList.toggle('st-active',n===stPublicAdsIndex));
+}
+const stMoney=n=>Number(n||0).toLocaleString(stStore.language==='en'?'en-EG':'ar-EG')+' '+stT('ج.م','EGP');
+const stSafeImage=(bucket,path)=>{if(!path||!cloud)return '';return cloud.storage.from(bucket).getPublicUrl(path).data.publicUrl};
+function stSetLanguage(v){stStore.language=v;localStorage.setItem('st_store_lang',v);render()}
+const stCart=[];
+const stCheckoutEndpoint=SUPABASE_URL+'/functions/v1/st-store-checkout';
+let stCheckoutBusy=false;
+function stCartAdd(productId){
+ const select=document.getElementById('stVariant_'+productId),v=stStore.variants.find(x=>x.id===select?.value&&x.product_id===productId);
+ if(!v||Number(v.available_quantity)<1)return alert(stT('اختار مقاس متاح','Choose an available variant'));
+ const existing=stCart.find(x=>x.variant_id===v.id),q=Number(existing?.quantity||0);
+ if(q>=Number(v.available_quantity))return alert(stT('الكمية المتاحة لا تكفي','Not enough stock'));
+ if(existing)existing.quantity++;else stCart.push({variant_id:v.id,product_id:productId,quantity:1});
+ stStorePageRefresh();
+}
+function stCartChange(id,delta){const x=stCart.find(x=>x.variant_id===id);if(!x)return;const v=stStore.variants.find(v=>v.id===id);x.quantity=Math.max(0,Math.min(Number(v?.available_quantity||0),x.quantity+delta));if(!x.quantity)stCart.splice(stCart.indexOf(x),1);stStorePageRefresh()}
+function stCartTotal(){return stCart.reduce((sum,x)=>{const p=stStore.products.find(p=>p.id===x.product_id);return sum+Number(p?.sale_price??p?.price??0)*x.quantity},0)}
+function stStorePageRefresh(){if(page==='store'){$('app').innerHTML=stStorePage();stUpdateShippingFields()}}
+function stStorePage(){const list=stStore.products.filter(p=>p.is_active);const enabled=stStore.publicConfig?.store_enabled===true;return `<div class="toolbar"><h2>${stT('متجر ST','ST Store')}</h2></div>${!enabled?`<div class="note">${stT('المتجر غير مفعل حاليًا من الإدارة؛ يمكنك مشاهدة المنتجات.','Store checkout is currently disabled by the administrator.')}</div>`:''}${!stStore.loaded?'<div class="empty">جار تحميل المنتجات...</div>':list.length?`<div class="st-shop-grid">${list.map(p=>{const img=stStore.images.find(x=>x.product_id===p.id),vs=stStore.variants.filter(x=>x.product_id===p.id),price=p.sale_price??p.price;return `<article class="card st-card">${img?`<img class="st-shop-img" src="${esc(stSafeImage('st-store-products',img.image_path))}" alt="${esc(p.name_ar)}" loading="lazy">`:''}<h3>${esc(stStore.language==='en'?(p.name_en||p.name_ar):p.name_ar)}</h3><p class="muted">${esc(stStore.language==='en'?(p.description_en||p.description_ar||''):(p.description_ar||''))}</p><p><b>${stMoney(price)}</b> ${p.sale_price!=null?`<del class="muted">${stMoney(p.price)}</del>`:''}</p><label>${stT('المقاس / اللون','Size / Color')}</label><select id="stVariant_${p.id}">${vs.filter(v=>Number(v.available_quantity)>0).map(v=>`<option value="${esc(v.id)}">${esc(v.size||'—')} / ${esc(v.color||'—')} — ${v.available_quantity} ${stT('متاح','available')}</option>`).join('')}</select><button class="primary" style="margin-top:10px;width:100%" ${!enabled||!vs.some(v=>v.available_quantity>0)?'disabled':''} onclick="stCartAdd('${p.id}')">${stT('أضف للسلة','Add to cart')}</button></article>`}).join('')}</div>`:'<div class="empty">لا توجد منتجات منشورة حاليًا.</div>'}<div class="card" style="margin-top:25px"><h2>${stT('سلة المشتريات','Shopping cart')}</h2>${stCart.length?stCart.map(x=>{const p=stStore.products.find(p=>p.id===x.product_id),v=stStore.variants.find(v=>v.id===x.variant_id);return `<div class="match"><span>${esc(stStore.language==='en'?(p?.name_en||p?.name_ar):p?.name_ar)} — ${esc(v?.size||'')} ${esc(v?.color||'')}</span><span><button type="button" onclick="stCartChange('${x.variant_id}',-1)">−</button> ${x.quantity} <button type="button" onclick="stCartChange('${x.variant_id}',1)">+</button></span><b>${stMoney(Number(p?.sale_price??p?.price)*x.quantity)}</b></div>`}).join(''):`<p class="muted">${stT('السلة فارغة','Your cart is empty')}</p>`}<h3>${stT('الإجمالي قبل الشحن','Subtotal')}: ${stMoney(stCartTotal())}</h3></div>${stCart.length&&enabled?`<div class="card" style="margin-top:20px"><h2>${stT('إتمام الطلب','Checkout')}</h2><form class="formgrid" onsubmit="stCheckout(event)"><div><label>${stT('الاسم بالكامل','Full name')}</label><input id="stCustomerName" required minlength="2" maxlength="120" autocomplete="name"></div><div><label>${stT('رقم الموبايل','Phone number')}</label><input id="stCustomerPhone" required minlength="8" maxlength="20" inputmode="tel" autocomplete="tel"></div><div><label>${stT('طريقة الاستلام','Delivery method')}</label><select id="stFulfillment" onchange="stUpdateShippingFields()"><option value="pickup">${stT('استلام من المقر','Pickup')}</option><option value="shipping">${stT('شحن للمحافظة','Shipping')}</option></select></div><div id="stGovernorateField"><label>${stT('المحافظة','Governorate')}</label><select id="stGovernorate" onchange="stUpdateShippingFields()">${stStore.shipping.filter(g=>g.is_enabled).map(g=>`<option value="${g.id}" data-fee="${g.shipping_fee}">${esc(stStore.language==='en'?g.governorate_en:g.governorate_ar)} — ${stMoney(g.shipping_fee)}</option>`).join('')}</select></div><div class="field wide" id="stAddressField"><label>${stT('العنوان بالتفصيل','Full address')}</label><input id="stShippingAddress" maxlength="500"></div><div class="field wide"><label>${stT('ملاحظات (اختياري)','Notes (optional)')}</label><input id="stCustomerNotes" maxlength="1000"></div><div class="field wide"><div class="note"><b>${stT('الدفع عن طريق InstaPay فقط','InstaPay only')}</b><p>${esc(stStore.publicConfig?.instapay_recipient_name||'')} — <span dir="ltr">${esc(stStore.publicConfig?.instapay_address||'')}</span></p><p>${stT('حوّل المبلغ الإجمالي، ثم ارفع صورة الإيصال. لا يتم اعتماد الدفع إلا بعد مراجعة الإدارة.','Transfer the full amount, then upload the receipt. Payment is verified manually.')}</p><b id="stCheckoutTotal">${stMoney(stCartTotal())}</b></div></div><div class="field wide"><label>${stT('إيصال InstaPay (إجباري) — JPG / PNG / WebP / PDF حتى 5MB','InstaPay receipt (required) — JPG / PNG / WebP / PDF up to 5MB')}</label><input id="stCheckoutReceipt" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></div><button id="stCheckoutButton" class="primary" type="submit">${stT('تأكيد وإرسال الطلب','Place order')}</button></form><div id="stCheckoutMessage" role="status"></div></div>`:''}`}
+function stUpdateShippingFields(){const m=$('stFulfillment')?.value,shipping=m==='shipping';if($('stGovernorateField'))$('stGovernorateField').classList.toggle('hide',!shipping);if($('stAddressField'))$('stAddressField').classList.toggle('hide',!shipping);if($('stShippingAddress'))$('stShippingAddress').required=shipping;const opt=$('stGovernorate')?.selectedOptions?.[0],fee=shipping?Number(opt?.dataset.fee||0):0;if($('stCheckoutTotal'))$('stCheckoutTotal').textContent=stMoney(stCartTotal()+fee)}
+async function stCheckout(e){e.preventDefault();if(stCheckoutBusy)return;const msg=$('stCheckoutMessage'),btn=$('stCheckoutButton'),file=$('stCheckoutReceipt')?.files?.[0];if(!file||!['image/jpeg','image/png','image/webp','application/pdf'].includes(file.type)||file.size>5*1024*1024||!file.size)return alert(stT('إيصال غير صالح، الحد الأقصى 5 ميجابايت','Invalid receipt, max 5 MB'));if(!stStore.publicConfig?.store_enabled)return alert(stT('المتجر مغلق','Store closed'));if(!stCart.length)return;const method=$('stFulfillment').value;if(method==='shipping'&&!$('stGovernorate').value)return alert(stT('الشحن غير متاح حاليًا','Shipping unavailable'));if(!stStore.publicConfig?.instapay_address)return alert(stT('بيانات InstaPay غير مكتملة، تواصل مع الإدارة','InstaPay details are missing'));const items=stCart.map(x=>({variant_id:x.variant_id,quantity:x.quantity}));const orderData={customer_name:$('stCustomerName').value.trim(),customer_phone:$('stCustomerPhone').value.trim(),fulfillment_method:method,governorate_id:method==='shipping'?Number($('stGovernorate').value):null,shipping_address:method==='shipping'?$('stShippingAddress').value.trim():null,customer_notes:$('stCustomerNotes').value.trim(),items};stCheckoutBusy=true;btn.disabled=true;msg.textContent=stT('جاري رفع الإيصال وإرسال الطلب، لا تغلق الصفحة...','Uploading receipt and placing order...');try{const call=async body=>{const r=await fetch(stCheckoutEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json();if(!r.ok||data.error)throw Error(data.error||'Checkout failed');return data};const prepared=await call({action:'prepare',mime_type:file.type,file_size:file.size});if(!prepared.path||!prepared.upload_token||!prepared.ticket)throw Error('Upload preparation incomplete');const uploaded=await cloud.storage.from('st-payment-receipts').uploadToSignedUrl(prepared.path,prepared.upload_token,file,{contentType:file.type});if(uploaded.error)throw uploaded.error;const result=await call({action:'finalize',ticket:prepared.ticket,...orderData});const order=result.order;if(!order?.order_number||!order?.tracking_token)throw Error('Order confirmation incomplete');const receipt=`ST Store\nOrder: ${order.order_number}\nTracking token: ${order.tracking_token}\nTotal: ${order.total_amount} EGP`;msg.innerHTML=`<div class="note"><h3>${stT('تم استلام طلبك بنجاح','Order received')}</h3><p>${stT('رقم الطلب','Order number')}: <b dir="ltr">${esc(order.order_number)}</b></p><p>${stT('رمز المتابعة السري — احتفظ به','Private tracking token — save it')}:</p><input id="stSuccessToken" readonly value="${esc(order.tracking_token)}" dir="ltr"><p>${stT('حالة الدفع: في انتظار مراجعة الإدارة','Payment: pending manual verification')}</p><button type="button" onclick="navigator.clipboard.writeText(document.getElementById('stSuccessToken').value)">${stT('نسخ الرمز','Copy token')}</button> <button type="button" onclick="go('track')">${stT('متابعة الطلب','Track order')}</button></div>`;stCart.length=0;btn.closest('form').classList.add('hide');stStore.loaded=false;}catch(err){msg.textContent=stT('تعذر إرسال الطلب: ','Checkout failed: ')+(err.message||err);btn.disabled=false}finally{stCheckoutBusy=false}}
+async function stLoadStore(){if(stStore.loading||stStore.loaded||!cloud)return;stStore.loading=true;try{const [p,i,v,c,g]=await Promise.all([cloud.from('st_store_products').select('*').eq('is_active',true).order('created_at',{ascending:false}),cloud.from('st_store_images').select('*').order('sort_order'),cloud.rpc('st_store_available_variants'),cloud.rpc('st_store_public_config'),cloud.from('st_store_shipping').select('*').eq('is_enabled',true).order('id')]);for(const r of [p,i,v,c,g])if(r.error)throw r.error;stStore.products=p.data||[];stStore.images=i.data||[];stStore.variants=v.data||[];stStore.publicConfig=Array.isArray(c.data)?c.data[0]:c.data;stStore.shipping=g.data||[];stStore.loaded=true;}catch(e){console.error(e);stStore.loaded=true;alert('تعذر تحميل المتجر: '+e.message)}finally{stStore.loading=false;if(page==='store'){render();stUpdateShippingFields()}}}
+function stTrackPage(){return `<div class="card" style="max-width:650px;margin:auto"><h2>متابعة طلب ST Store</h2><p class="muted">أدخل رقم الطلب ورمز المتابعة السري الذي حصلت عليه بعد الطلب.</p><form onsubmit="stTrackOrder(event)" class="stack"><div><label>رقم الطلب</label><input id="stTrackNumber" required maxlength="60" autocomplete="off"></div><div><label>رمز المتابعة السري</label><input id="stTrackToken" required minlength="32" autocomplete="off"></div><button class="primary">متابعة</button></form><div id="stTrackResult"></div></div>`}
+async function stTrackOrder(e){e.preventDefault();const el=$('stTrackResult');el.textContent='جار البحث...';const {data,error}=await cloud.rpc('st_store_track_order',{p_order_number:$('stTrackNumber').value.trim(),p_tracking_token:$('stTrackToken').value.trim()});if(error){el.textContent='تعذر البحث: '+error.message;return}const o=data?.[0];el.innerHTML=o?`<div class="note"><p>رقم الطلب: <b>${esc(o.order_number)}</b></p><p>الحالة: ${esc(o.order_status)}</p><p>الدفع: ${esc(o.payment_status)}</p><p>الإجمالي: ${stMoney(o.total_amount)}</p></div>`:'<div class="note">الطلب غير موجود أو رمز المتابعة غير صحيح.</div>'}
+async function stLoadAdminTab(tab){if(!adminSession||stStore.adminLoaded[tab]||!cloud)return;stStore.adminLoaded[tab]=true;try{let calls=[];if(tab==='storeproducts')calls=[['products',cloud.from('st_store_products').select('*').order('created_at',{ascending:false})],['variants',cloud.from('st_store_variants').select('*')],['images',cloud.from('st_store_images').select('*').order('sort_order')]];if(tab==='storeorders')calls=[['orders',cloud.from('st_store_orders').select('*').order('created_at',{ascending:false}).limit(100)]];if(tab==='storesettings')calls=[['settings',cloud.from('st_store_settings').select('*').eq('id',1).single()],['shipping',cloud.from('st_store_shipping').select('*').order('id')]];if(tab==='storeads')calls=[['ads',cloud.from('st_ads').select('*').order('sort_order')],['sponsors',cloud.from('st_sponsors').select('*').order('sort_order')]];const results=await Promise.all(calls.map(async ([key,promise])=>[key,await promise]));for(const [key,r] of results){if(r.error)throw r.error;stStore[key]=r.data;}if(page==='admin'&&adminTab===tab)render()}catch(e){stStore.adminLoaded[tab]=false;console.error(e);alert('خطأ تحميل بيانات المتجر: '+e.message)}}
+function stAdminProducts(){return `<h3>منتجات ST Store</h3><div class="note">المنتجات الجديدة تبدأ غير منشورة. ارفع الصور بعد حفظ المنتج، وأضف المخزون قبل النشر.</div><div class="card"><form class="formgrid" onsubmit="stAddProduct(event)"><div><label>اسم المنتج بالعربي</label><input id="stPAr" required maxlength="120"></div><div><label>Product name (English)</label><input id="stPEn" maxlength="120"></div><div><label>القسم</label><input id="stPCat" value="general" required></div><div><label>السعر بالجنيه</label><input id="stPPrice" type="number" min="0" step="0.01" required></div><div><label>سعر العرض (اختياري)</label><input id="stPSale" type="number" min="0" step="0.01"></div><div class="field wide"><label>وصف عربي</label><textarea id="stPDesc" style="width:100%" rows="2"></textarea></div><div class="field wide"><label>صور المنتج (اختياري، حتى 5 ميجابايت للصورة)</label><input id="stPImages" type="file" accept="image/jpeg,image/png,image/webp" multiple><p class="mini">يمكنك رفع الصور أثناء إضافة المنتج أو بعد حفظه.</p></div><button class="primary">إضافة المنتج</button></form></div><div class="stack" style="margin-top:15px">${stStore.products.map(p=>`<div class="card"><div class="row"><h3>${esc(p.name_ar)}</h3><span class="pill">${p.is_active?'منشور':'مخفي'}</span></div><p>${stMoney(p.sale_price??p.price)} · ${esc(p.category)}</p><div class="st-form-actions"><button onclick="stToggleProduct('${p.id}',${!p.is_active})">${p.is_active?'إخفاء':'نشر'}</button><button type="button" onclick="stEditProduct('${p.id}')">تعديل</button><button type="button" class="danger" onclick="stDeleteProduct('${p.id}')">حذف</button><button onclick="stAddVariant('${p.id}')">إضافة مقاس/لون ومخزون</button><button onclick="stUploadProductImage('${p.id}')">إضافة صور</button></div><div class="st-product-gallery">${stStore.images.filter(x=>x.product_id===p.id).map((im,i)=>`<div class="st-product-thumb"><img src="${esc(stSafeImage('st-store-products',im.image_path))}" alt="صورة المنتج" loading="lazy"><div class="st-form-actions">${i===0?'<span class="pill">الرئيسية</span>':`<button type="button" onclick="stMakeMainImage('${im.id}','${p.id}')">اجعلها رئيسية</button>`}<button type="button" class="danger" onclick="stDeleteProductImage('${im.id}','${p.id}')">حذف</button></div></div>`).join('')}</div><p class="mini">${stStore.variants.filter(v=>v.product_id===p.id).map(v=>`${esc(v.size||'بدون مقاس')} / ${esc(v.color||'بدون لون')}: ${v.stock_quantity} (${v.reserved_quantity} محجوز)`).join(' · ')||'لم تتم إضافة مخزون'}</p></div>`).join('')||'<div class="empty">جار التحميل أو لا توجد منتجات.</div>'}</div>`}
+async function stAddProduct(e){e.preventDefault();const price=Number($('stPPrice').value),sale=$('stPSale').value?Number($('stPSale').value):null;if(sale!==null&&sale>price)return alert('سعر العرض أكبر من السعر الأصلي');const files=Array.from($('stPImages')?.files||[]);const validation=stValidateProductImages(files);if(validation)return alert(validation);const {data,error}=await cloud.from('st_store_products').insert({name_ar:$('stPAr').value.trim(),name_en:$('stPEn').value.trim(),description_ar:$('stPDesc').value.trim(),category:$('stPCat').value.trim(),price,sale_price:sale,is_active:false}).select('id').single();if(error)return alert(error.message);if(files.length){const failed=await stSaveProductImages(data.id,files);if(failed.length)alert('تم حفظ المنتج، لكن تعذر رفع بعض الصور: '+failed.join(' | '));}e.target.reset();stLastRenderedView='';stRefresh('storeproducts')}
+async function stToggleProduct(id,active){if(active&&!stStore.variants.some(v=>v.product_id===id&&v.stock_quantity>v.reserved_quantity))return alert('أضف مخزون متاح قبل النشر');const {error}=await cloud.from('st_store_products').update({is_active:active}).eq('id',id);if(error)return alert(error.message);stRefresh('storeproducts')}
+async function stEditProduct(id){
+ if(!adminSession)return alert('يجب تسجيل دخول الإدارة');
+ const p=stStore.products.find(x=>x.id===id);if(!p)return alert('المنتج غير موجود');
+ const name_ar=prompt('اسم المنتج بالعربي',p.name_ar||'');if(name_ar===null)return;
+ if(!name_ar.trim())return alert('اسم المنتج مطلوب');
+ const name_en=prompt('اسم المنتج بالإنجليزي',p.name_en||'');if(name_en===null)return;
+ const category=prompt('القسم',p.category||'general');if(category===null)return;
+ if(!category.trim())return alert('القسم مطلوب');
+ const priceInput=prompt('السعر بالجنيه',String(p.price));if(priceInput===null)return;
+ const price=Number(priceInput);if(!priceInput.trim()||!Number.isFinite(price)||price<0)return alert('السعر غير صحيح');
+ const saleInput=prompt('سعر العرض (اتركه فارغًا لإلغائه)',p.sale_price==null?'':String(p.sale_price));if(saleInput===null)return;
+ const sale_price=saleInput.trim()===''?null:Number(saleInput);
+ if(sale_price!==null&&(!Number.isFinite(sale_price)||sale_price<0||sale_price>price))return alert('سعر العرض غير صحيح');
+ const description_ar=prompt('الوصف بالعربي',p.description_ar||'');if(description_ar===null)return;
+ const {error}=await cloud.from('st_store_products').update({name_ar:name_ar.trim(),name_en:name_en.trim(),category:category.trim(),price,sale_price,description_ar:description_ar.trim()}).eq('id',id);
+ if(error)return alert('تعذر تعديل المنتج: '+error.message);
+ stRefresh('storeproducts');alert('تم تعديل المنتج');
+}
+async function stDeleteProduct(id){
+ if(!adminSession)return alert('يجب تسجيل دخول الإدارة');
+ const p=stStore.products.find(x=>x.id===id);if(!p)return alert('المنتج غير موجود');
+ if(!confirm('حذف المنتج «'+p.name_ar+'» نهائيًا؟ لن يمكن التراجع. المنتجات المرتبطة بطلبات سابقة لن تُحذف.'))return;
+ const variants=stStore.variants.filter(v=>v.product_id===id);
+ if(variants.some(v=>Number(v.reserved_quantity)>0))return alert('المنتج له مخزون محجوز؛ استخدم إخفاء بدل الحذف');
+ if(variants.length){
+   const {data,error}=await cloud.from('st_store_order_items').select('id').in('variant_id',variants.map(v=>v.id)).limit(1);
+   if(error)return alert('تعذر التأكد من الطلبات القديمة، تم إيقاف الحذف لحمايتها: '+error.message);
+   if(data?.length)return alert('المنتج مرتبط بطلبات سابقة؛ استخدم إخفاء بدل الحذف');
+ }
+ // Delete the parent only: database foreign keys decide whether removal is safe.
+ // Avoid removing images/variants first to prevent partial data loss on failed parent delete.
+ const {error}=await cloud.from('st_store_products').delete().eq('id',id);
+ if(error)return alert('تعذر حذف المنتج؛ قد يكون مرتبطًا بطلبات أو مخزون. استخدم إخفاء بدلًا من ذلك. التفاصيل: '+error.message);
+ // Storage files may remain orphaned; do not delete them automatically without checking permissions.
+ stRefresh('storeproducts');alert('تم حذف المنتج من قاعدة البيانات');
+}
+async function stAddVariant(id){const size=prompt('المقاس (اتركه فارغًا لو بدون مقاس)');if(size===null)return;const color=prompt('اللون (اتركه فارغًا لو بدون لون)');if(color===null)return;const q=prompt('كمية المخزون (عدد صحيح)');if(q===null)return;const qty=Number(q);if(!Number.isInteger(qty)||qty<0)return alert('كمية غير صحيحة');const {error}=await cloud.from('st_store_variants').insert({product_id:id,size:size.trim(),color:color.trim(),stock_quantity:qty});if(error)return alert(error.message);stRefresh('storeproducts')}
+function stValidateProductImages(files){for(const file of files){if(file.size>5*1024*1024)return 'الحد الأقصى للصورة 5 ميجابايت';if(!['image/jpeg','image/png','image/webp'].includes(file.type))return 'صيغة الصورة غير مدعومة';}return ''}
+async function stSaveProductImages(id,files){const failures=[];for(const file of files){const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type];const path=id+'/'+crypto.randomUUID()+'.'+ext;const up=await cloud.storage.from('st-store-products').upload(path,file,{contentType:file.type,upsert:false});if(up.error){failures.push(up.error.message);continue;}const existing=stStore.images.filter(x=>x.product_id===id);const r=await cloud.from('st_store_images').insert({product_id:id,image_path:path,sort_order:existing.length+files.indexOf(file)});if(r.error){await cloud.storage.from('st-store-products').remove([path]);failures.push(r.error.message)}}return failures}
+async function stUploadProductImage(id){const input=document.createElement('input');input.type='file';input.multiple=true;input.accept='image/jpeg,image/png,image/webp';input.onchange=async()=>{const files=Array.from(input.files||[]);if(!files.length)return;const error=stValidateProductImages(files);if(error)return alert(error);const failures=await stSaveProductImages(id,files);if(failures.length)alert('تعذر رفع بعض الصور: '+failures.join(' | '));stRefresh('storeproducts')};input.click()}
+async function stMakeMainImage(imageId,productId){const images=stStore.images.filter(x=>x.product_id===productId);const selected=images.find(x=>x.id===imageId);if(!selected)return;const base=Math.min(0,...images.map(x=>Number(x.sort_order)||0))-1;const {error}=await cloud.from('st_store_images').update({sort_order:base}).eq('id',imageId);if(error)return alert(error.message);stRefresh('storeproducts')}
+async function stDeleteProductImage(imageId,productId){const im=stStore.images.find(x=>x.id===imageId&&x.product_id===productId);if(!im||!confirm('حذف صورة المنتج نهائيًا؟'))return;const {error}=await cloud.from('st_store_images').delete().eq('id',imageId);if(error)return alert(error.message);const removed=await cloud.storage.from('st-store-products').remove([im.image_path]);if(removed.error)alert('تم حذف الصورة من المنتج، لكن حذف ملف التخزين فشل: '+removed.error.message);stRefresh('storeproducts')}
+function stAdminOrders(){return `<h3>طلبات ST Store</h3><p class="note">الموافقة على الدفع تخصم المخزون المحجوز نهائيًا. راجع الإيصال بنفسك قبل الموافقة.</p><div class="stack">${stStore.orders.map(o=>`<div class="card"><div class="row"><b>${esc(o.order_number)}</b><span class="pill">${esc(o.order_status)} / ${esc(o.payment_status)}</span></div><p>${esc(o.customer_name)} · <span dir="ltr">${esc(o.customer_phone)}</span></p><p>${stMoney(o.total_amount)} · ${esc(o.fulfillment_method)} ${o.shipping_address?' · '+esc(o.shipping_address):''}</p><div class="st-form-actions"><button onclick="stViewReceipt('${o.id}')">عرض الإيصال</button>${o.payment_status==='pending'?`<button class="primary" onclick="stOrderAction('${o.id}','approve')">اعتماد الدفع</button><button class="danger" onclick="stOrderAction('${o.id}','cancel')">رفض / إلغاء</button>`:''}${o.payment_status==='approved'?`<button onclick="stOrderAction('${o.id}','status')">تحديث الحالة</button>`:''}</div></div>`).join('')||'<div class="empty">لا توجد طلبات أو جار التحميل.</div>'}</div>`}
+async function stViewReceipt(id){const o=stStore.orders.find(x=>x.id===id);if(!o?.payment_receipt_path)return alert('لا يوجد إيصال');const {data,error}=await cloud.storage.from('st-payment-receipts').createSignedUrl(o.payment_receipt_path,60);if(error)return alert(error.message);window.open(data.signedUrl,'_blank','noopener,noreferrer')}
+async function stOrderAction(id,action){let fn,args;if(action==='approve'){if(!confirm('هل راجعت إيصال InstaPay وتأكدت من وصول المبلغ فعليًا؟'))return;fn='st_store_admin_approve_payment';args={p_order_id:id}}else if(action==='cancel'){const reason=prompt('سبب الإلغاء أو رفض الدفع:');if(reason===null)return;fn='st_store_admin_cancel_order';args={p_order_id:id,p_reason:reason}}else{const status=prompt('الحالة الجديدة: preparing / shipped / delivered');if(!['preparing','shipped','delivered'].includes(status))return alert('حالة غير صحيحة');fn='st_store_admin_set_status';args={p_order_id:id,p_new_status:status}}const {error}=await cloud.rpc(fn,args);if(error)return alert(error.message);stRefresh('storeorders')}
+function stAdminSettings(){const s=stStore.settings;return `<h3>إعدادات ST Store</h3>${s?`<div class="card"><form class="formgrid" onsubmit="stSaveSettings(event)"><div><label>اسم مستلم InstaPay</label><input id="stRecipient" value="${esc(s.instapay_recipient_name||'')}"></div><div><label>عنوان InstaPay</label><input id="stInstapay" value="${esc(s.instapay_address||'')}"></div><div><label>عنوان الاستلام بالعربي</label><input id="stPickupAr" value="${esc(s.pickup_address_ar||'')}"></div><div><label>Pickup address (English)</label><input id="stPickupEn" value="${esc(s.pickup_address_en||'')}"></div><div><label><input type="checkbox" id="stPickupEnabled" ${s.pickup_enabled?'checked':''} style="width:auto"> تفعيل الاستلام من المقر</label></div><div><label><input type="checkbox" id="stStoreEnabled" ${s.store_enabled?'checked':''} style="width:auto"> تفعيل المتجر (بعد الاختبارات فقط)</label></div><button class="primary">حفظ الإعدادات</button></form></div>`:'<div class="empty">جار تحميل الإعدادات...</div>'}<h3 style="margin-top:25px">الشحن للمحافظات</h3><div class="stack">${stStore.shipping.map(x=>`<div class="match"><b>${esc(x.governorate_ar)}</b><span>${stMoney(x.shipping_fee)}</span><span>${x.is_enabled?'مفعّل':'غير مفعّل'}</span><button onclick="stEditShipping(${x.id})">تعديل</button></div>`).join('')}</div>`}
+async function stSaveSettings(e){e.preventDefault();const enabled=$('stStoreEnabled').checked;if(enabled&&!confirm('تفعيل المتجر الآن لا يفعّل الدفع من الموقع قبل اكتمال خدمة الإيصالات. هل تريد المتابعة؟'))return;const {error}=await cloud.from('st_store_settings').update({instapay_recipient_name:$('stRecipient').value.trim(),instapay_address:$('stInstapay').value.trim(),pickup_address_ar:$('stPickupAr').value.trim(),pickup_address_en:$('stPickupEn').value.trim(),pickup_enabled:$('stPickupEnabled').checked,store_enabled:enabled,updated_at:new Date().toISOString()}).eq('id',1);if(error)return alert(error.message);stRefresh('storesettings')}
+async function stEditShipping(id){const x=stStore.shipping.find(x=>x.id===id);if(!x)return;const value=prompt('سعر الشحن إلى '+x.governorate_ar+' بالجنيه',x.shipping_fee);if(value===null)return;const fee=Number(value);if(!Number.isFinite(fee)||fee<0)return alert('سعر غير صحيح');const enabled=confirm('هل تريد تفعيل الشحن لهذه المحافظة؟ إلغاء = تعطيل');const {error}=await cloud.from('st_store_shipping').update({shipping_fee:fee,is_enabled:enabled,updated_at:new Date().toISOString()}).eq('id',id);if(error)return alert(error.message);stRefresh('storesettings')}
+function stMediaRow(type,a){const ads=type==='ads',name=ads?a.title_ar:a.name,path=ads?a.image_path:a.logo_path;return `<div class="match"><div class="row" style="gap:12px"><img src="${esc(stSiteMediaUrl(path))}" alt="" style="width:90px;height:65px;object-fit:contain;background:#071322;border-radius:8px" onerror="this.style.display='none'"><div><b>${esc(name)}</b><div class="mini">${a.is_active?'مفعّل':'غير مفعّل'} · الترتيب ${Number(a.sort_order)||0}</div></div></div><div class="st-form-actions"><button onclick="stEditMedia('${type}','${a.id}')">تعديل</button><button onclick="stMoveMedia('${type}','${a.id}',-1)">↑ للأعلى</button><button onclick="stMoveMedia('${type}','${a.id}',1)">↓ للأسفل</button><button onclick="stToggleMedia('${type}','${a.id}',${!a.is_active})">${a.is_active?'إخفاء':'تفعيل'}</button><button class="danger" onclick="stDeleteMedia('${type}','${a.id}')">حذف</button></div></div>`}
+function stAdminAds(){return `<h3>الإعلانات والرعاة</h3><p class="note">تقدر تضيف وتعدل الصور والروابط والترتيب وتخفي أو تحذف أي إعلان أو راعٍ. الصور القديمة لا تُحذف من التخزين تلقائيًا حفاظًا على الملفات.</p><div class="card"><h3 id="stMediaFormHeading">إضافة إعلان أو راعٍ</h3><form class="formgrid" onsubmit="stAddMedia(event)"><input type="hidden" id="stMediaEditId"><div><label>النوع</label><select id="stMediaType"><option value="ads">إعلان</option><option value="sponsors">راعٍ</option></select></div><div><label>الاسم أو العنوان</label><input id="stMediaTitle" required></div><div><label>اختيار صورة من الجهاز (PNG / JPG / WEBP، حتى 5 ميجابايت)</label><input id="stMediaFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="stMediaFileChanged()"></div><div><label>أو مسار صورة موجودة داخل st-site-media</label><input id="stMediaPath" placeholder="sponsors/logo.png"></div><div><label>رابط خارجي HTTPS (اختياري)</label><input id="stMediaUrl" type="url" placeholder="https://example.com"></div><div class="field wide" id="stMediaPreview" style="display:none"><img id="stMediaPreviewImage" alt="معاينة الصورة" style="max-height:180px;max-width:100%;object-fit:contain;border-radius:10px"></div><div class="field wide"><button id="stMediaSubmit" type="submit" class="primary">رفع الصورة وإضافة (غير مفعل)</button> <button type="button" id="stMediaCancel" style="display:none" onclick="stCancelEditMedia()">إلغاء التعديل</button><p id="stMediaStatus" class="mini" role="status"></p></div></form></div><h3 style="margin-top:20px">الإعلانات</h3>${stStore.ads.map(a=>stMediaRow('ads',a)).join('')||'<div class="empty">لا توجد إعلانات.</div>'}<h3>الرعاة</h3>${stStore.sponsors.map(a=>stMediaRow('sponsors',a)).join('')||'<div class="empty">لا يوجد رعاة.</div>'}`}
+function stSiteMediaUrl(path){return cloud?.storage.from('st-site-media').getPublicUrl(path||'').data.publicUrl||''}
+function stEditMedia(type,id){const x=(type==='ads'?stStore.ads:stStore.sponsors).find(v=>String(v.id)===String(id));if(!x)return;stMediaEditing={type,id:String(id)};$('stMediaEditId').value=String(id);$('stMediaType').value=type;$('stMediaType').disabled=true;$('stMediaTitle').value=type==='ads'?x.title_ar:x.name;$('stMediaPath').value=(type==='ads'?x.image_path:x.logo_path)||'';$('stMediaUrl').value=(type==='ads'?x.target_url:x.website_url)||'';$('stMediaFile').value='';$('stMediaPreviewImage').src=stSiteMediaUrl($('stMediaPath').value);$('stMediaPreview').style.display='block';$('stMediaFormHeading').textContent='تعديل '+(type==='ads'?'الإعلان':'الراعي');$('stMediaSubmit').textContent='حفظ التعديلات';$('stMediaCancel').style.display='inline-block';$('stMediaStatus').textContent='';$('stMediaFormHeading').scrollIntoView({behavior:'smooth',block:'center'});}
+let stMediaEditing=null;
+function stCancelEditMedia(){stMediaEditing=null;$('stMediaEditId').value='';$('stMediaType').disabled=false;$('stMediaTitle').value='';$('stMediaPath').value='';$('stMediaUrl').value='';$('stMediaFile').value='';$('stMediaPreview').style.display='none';$('stMediaFormHeading').textContent='إضافة إعلان أو راعٍ';$('stMediaSubmit').textContent='رفع الصورة وإضافة (غير مفعل)';$('stMediaCancel').style.display='none';$('stMediaStatus').textContent='';}
+async function stMoveMedia(type,id,direction){const arr=type==='ads'?stStore.ads:stStore.sponsors;const i=arr.findIndex(x=>String(x.id)===String(id)),j=i+direction;if(i<0||j<0||j>=arr.length)return;const table=type==='ads'?'st_ads':'st_sponsors';const order=arr.slice();[order[i],order[j]]=[order[j],order[i]];const base=Math.min(0,...arr.map(x=>Number(x.sort_order)||0))-order.length-10;try{for(let k=0;k<order.length;k++){const {error}=await cloud.from(table).update({sort_order:base+k}).eq('id',order[k].id);if(error)throw error;}stRefresh('storeads');stReloadMediaPublic()}catch(e){alert('تعذر تغيير الترتيب: '+e.message);stRefresh('storeads')}}
+async function stDeleteMedia(type,id){const x=(type==='ads'?stStore.ads:stStore.sponsors).find(v=>String(v.id)===String(id));if(!x||!confirm('حذف '+(type==='ads'?'الإعلان':'الراعي')+' «'+(type==='ads'?x.title_ar:x.name)+'» من الموقع؟ لن يتم حذف ملف الصورة من التخزين.'))return;const {error}=await cloud.from(type==='ads'?'st_ads':'st_sponsors').delete().eq('id',id);if(error)return alert('تعذر الحذف: '+error.message);if(stMediaEditing?.id===String(id))stMediaEditing=null;stRefresh('storeads');stReloadMediaPublic()}
+function stReloadMediaPublic(){stLoadPublicSponsors();stLoadPublicAds()}
+
+function stMediaFileChanged(){const f=$('stMediaFile')?.files?.[0],preview=$('stMediaPreview'),img=$('stMediaPreviewImage');if(!preview||!img)return;if(!f){preview.style.display='none';img.removeAttribute('src');return;}if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>5*1024*1024||!f.size){alert('اختار صورة PNG أو JPG أو WEBP بحجم لا يتجاوز 5 ميجابايت');$('stMediaFile').value='';preview.style.display='none';return;}const reader=new FileReader();reader.onload=()=>{if($('stMediaPreviewImage')){$('stMediaPreviewImage').src=reader.result;$('stMediaPreview').style.display='block';}};reader.readAsDataURL(f);}
+let stMediaSaving=false;
+async function stAddMedia(e){e.preventDefault();if(stMediaSaving)return;if(!adminSession||!cloud)return alert('سجّل الدخول للإدارة أولًا');const edit=stMediaEditing,ads=(edit?edit.type:$('stMediaType').value)==='ads',title=$('stMediaTitle').value.trim(),file=$('stMediaFile')?.files?.[0],manualPath=$('stMediaPath').value.trim(),url=$('stMediaUrl').value.trim(),btn=$('stMediaSubmit'),status=$('stMediaStatus');if(!title)return alert('اكتب اسم الراعي أو الإعلان');if(!file&&!manualPath)return alert('اختار صورة من جهازك أو اكتب مسار صورة موجودة');if(url&&!/^https:\/\/[^\s]+$/i.test(url))return alert('الرابط لازم يبدأ بـ https://');if(file&&(!['image/png','image/jpeg','image/webp'].includes(file.type)||!file.size||file.size>5*1024*1024))return alert('نوع أو حجم الصورة غير مسموح');stMediaSaving=true;btn.disabled=true;let path=manualPath,uploaded=false;try{if(file){const ext=({'image/png':'png','image/jpeg':'jpg','image/webp':'webp'})[file.type];path=(ads?'ads/':'sponsors/')+crypto.randomUUID()+'.'+ext;status.textContent='جارٍ رفع الصورة...';const upload=await cloud.storage.from('st-site-media').upload(path,file,{contentType:file.type,cacheControl:'3600',upsert:false});if(upload.error)throw Error('فشل رفع الصورة: '+upload.error.message);uploaded=true;}status.textContent='جارٍ حفظ البيانات...';const data=ads?{title_ar:title,image_path:path,target_url:url||null}:{name:title,logo_path:path,website_url:url||null};if(!edit)data.is_active=false;const table=ads?'st_ads':'st_sponsors';const request=edit?cloud.from(table).update(data).eq('id',edit.id):cloud.from(table).insert(data);const {error}=await request;if(error)throw Error('تعذر حفظ البيانات: '+error.message);status.textContent=edit?'تم حفظ التعديلات بنجاح':'تمت الإضافة بنجاح. فعّل العنصر من القائمة أدناه.';stMediaEditing=null;stRefresh('storeads');stReloadMediaPublic();}catch(err){status.textContent=err.message||String(err);alert(status.textContent+(uploaded?'\nتم رفع الصورة لكن لم تُحفظ البيانات. مسار الصورة: '+path:''));if(uploaded&&$('stMediaPath'))$('stMediaPath').value=path;}finally{stMediaSaving=false;if($('stMediaSubmit'))$('stMediaSubmit').disabled=false;}}
+async function stToggleMedia(type,id,active){const {error}=await cloud.from(type==='ads'?'st_ads':'st_sponsors').update({is_active:active}).eq('id',id);if(error)return alert(error.message);stRefresh('storeads');stReloadMediaPublic()}
+
+function stRefresh(tab){stStore.adminLoaded[tab]=false;stStore.loaded=false;stLoadAdminTab(tab)}
+
+</script><style>
+/* Site-wide bilingual controls */
+.st-language-top{position:relative;z-index:10;display:flex;justify-content:flex-start;align-items:center;min-height:48px;padding:6px max(18px,calc((100vw - 1180px)/2));background:#06101e;border-bottom:1px solid #27425d}.st-global-language{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.st-global-language select{width:auto;min-width:110px;padding:7px 9px;font-size:13px}
+html[dir="ltr"] body{direction:ltr}
+html[dir="ltr"] th,html[dir="ltr"] td{text-align:left}
+html[dir="ltr"] .st-name-choice{text-align:left}
+html[dir="ltr"] .st-podium-card{direction:ltr}
+html[dir="ltr"] .st-podium-id{text-align:center}
+@media(max-width:760px){.st-global-language select{min-width:90px}}
+</style>
+<script>
+/* ST Padel Tour bilingual UI layer. Only translates known interface text;
+   tournament/player/product content is preserved as entered by admins. */
+(function(){
+'use strict';
+const D={
+'الرئيسية':'Home','البطولات':'Tournaments','التسجيل':'Registration','النتائج':'Results','التصنيف':'Rankings','المتجر':'Store','متابعة طلب':'Track Order','الإدارة':'Admin',
+'كل نقطة بتفرق.':'Every point matters.','كل بطولة بتتحسب.':'Every tournament counts.',
+'المنصة الرسمية لبطولات ST: الفرق، المجموعات، المباريات، خروج المغلوب وتصنيف اللاعبين.':'The official ST tournaments platform: teams, groups, matches, knockouts and player rankings.',
+'بطولة':'Tournaments','لاعب':'Players','فريق':'Teams','نتيجة معتمدة':'Confirmed results',
+'بطولات ST':'ST Tournaments','عرض كل البطولات ←':'View all tournaments','أفضل اللاعبين':'Top players','التصنيف الكامل':'Full rankings',
+'اشترك الآن':'Register now','تفاصيل البطولة ←':'Tournament details','مجدولة':'Scheduled','جارية':'In progress','منتهية':'Completed',
+'كل البطولات':'All tournaments','سجل فريقك في البطولة':'Register your team','نظام البطولة:':'Tournament format:','عدد الفرق:':'Teams:','المباريات:':'Matches:',
+'ترتيب المجموعات':'Group standings','جدول مباريات المجموعات':'Group fixtures','خروج المغلوب':'Knockout stage','مباريات البطولة':'Tournament matches',
+'القرعة لم تُنشر بعد':'Draw not published yet','تفاصيل المواجهات وجدول المباريات ستظهر بعد اعتماد الإدارة ونشر القرعة.':'Fixtures and match schedules will appear once the draw is approved and published.',
+'القرعة منشورة للجمهور':'Draw published','معاينة إدارية — القرعة غير منشورة':'Admin preview — draw unpublished',
+'المركز':'Rank','اللاعب':'Player','النقاط':'Points','المباريات':'Matches','الانتصارات':'Wins','الألقاب':'Titles',
+'لعب':'Played','فوز':'Wins','خسارة':'Losses','له':'For','عليه':'Against','الفارق':'Difference',
+'نتائج المباريات':'Match results','لا توجد نتائج مسجلة.':'No match results yet.','لا يوجد لاعبون في التصنيف بعد.':'No ranked players yet.',
+'تصنيف لاعبي ST Padel Tour':'ST Padel Tour Player Rankings','ترتيب اللاعبين حسب النقاط في جميع بطولات ST':'Players ranked by points earned across ST tournaments',
+'المركز الأول':'1st place','المركز الثاني':'2nd place','المركز الثالث':'3rd place','نقطة':'points','باقي الترتيب':'Remaining rankings',
+'ابحث عن لاعب...':'Search players...','تسجيل الدخول':'Log in','تسجيل الخروج':'Log out','دخول إدارة ST':'ST Admin Login',
+'البريد الإلكتروني':'Email address','كلمة المرور':'Password','لوحة إدارة ST':'ST Admin Dashboard',
+'اللاعبون':'Players','المحظورون':'Banned players','الفرق':'Teams','طلبات الدفع':'Payment requests','الجدول':'Schedule','الأبطال':'Champions','النسخ الاحتياطي':'Backup',
+'منتجات المتجر':'Store products','طلبات المتجر':'Store orders','إعدادات المتجر':'Store settings','الإعلانات والرعاة':'Ads & sponsors',
+'إضافة لاعب':'Add player','اسم اللاعب':'Player name','الاسم بالكامل':'Full name','إضافة اللاعب':'Add player','تحديث أرقام اللاعبين':'Refresh player phone numbers',
+'صورة البروفايل':'Profile picture','تعديل':'Edit','حذف':'Delete','نسخ ID':'Copy ID','حظر اللاعب':'Ban player','فك الحظر / تعديل':'Unban / Edit',
+'رقم مرتبط':'Linked phone','ربط رقم موثّق':'Link verified phone','رقم الموبايل:':'Mobile number:','غير مسجل':'Not registered',
+'إنشاء بطولة':'Create tournament','اسم البطولة':'Tournament name','التاريخ':'Date','نظام البطولة':'Tournament format','الحالة':'Status',
+'عدد جولات السويسري':'Swiss rounds','عدد الفرق المتوقع للمعاينة':'Expected teams for preview','رسوم اشتراك الفريق (جنيه)':'Team entry fee (EGP)',
+'حفظ البطولة':'Save tournament','تغيير النظام':'Change format','معاينة الخطة':'Preview plan','نشر القرعة':'Publish draw','إخفاء القرعة':'Hide draw',
+'تعديل الرسوم':'Edit fee','إضافة فريق إداريًا (لترحيل الفرق القديمة فقط)':'Add team manually (legacy data only)',
+'المجموعة (مثال A أو B)':'Group (e.g. A or B)','اللاعب الأول':'First player','اللاعب الثاني':'Second player','إضافة الفريق':'Add team',
+'استيراد الفرق القديمة دفعة واحدة':'Bulk import legacy teams','استيراد الفرق القديمة':'Import legacy teams','تحديد المجموعة':'Set group',
+'إعدادات وخطة البطولات':'Tournament setup and plan','إضافة نتيجة':'Add result','حفظ النتيجة':'Save result',
+'إضافة منتج':'Add product','منتجات ST Store':'ST Store Products','اسم المنتج بالعربي':'Product name (Arabic)','القسم':'Category',
+'السعر بالجنيه':'Price (EGP)','سعر العرض (اختياري)':'Sale price (optional)','وصف عربي':'Arabic description',
+'صور المنتج (اختياري، حتى 5 ميجابايت للصورة)':'Product images (optional, up to 5 MB per image)',
+'يمكنك رفع الصور أثناء إضافة المنتج أو بعد حفظه.':'You can upload images when creating a product or afterward.',
+'المنتجات الجديدة تبدأ غير منشورة. ارفع الصور بعد حفظ المنتج، وأضف المخزون قبل النشر.':'New products start unpublished. Upload images and add stock before publishing.',
+'منشور':'Published','مخفي':'Hidden','إخفاء':'Hide','نشر':'Publish','إضافة مقاس/لون ومخزون':'Add size/color and stock',
+'إضافة صور':'Add images','الرئيسية':'Home','اجعلها رئيسية':'Set as main image','بدون مقاس':'No size','بدون لون':'No color',
+'محجوز':'reserved','لم تتم إضافة مخزون':'No stock added','جار التحميل أو لا توجد منتجات.':'Loading or no products found.',
+'جار تحميل المنتجات...':'Loading products...','لا توجد منتجات منشورة حاليًا.':'No published products yet.',
+'متجر ST':'ST Store','الشراء قريبًا':'Checkout coming soon','لا توجد خيارات متاحة':'No variants available',
+'إعدادات ST Store':'ST Store Settings','اسم مستلم InstaPay':'InstaPay recipient name','عنوان InstaPay':'InstaPay address',
+'عنوان الاستلام بالعربي':'Pickup address (Arabic)','تفعيل الاستلام من المقر':'Enable local pickup','تفعيل المتجر (بعد الاختبارات فقط)':'Enable store (only after testing)',
+'حفظ الإعدادات':'Save settings','جار تحميل الإعدادات...':'Loading settings...','الشحن للمحافظات':'Governorate shipping',
+'مفعّل':'Enabled','غير مفعّل':'Disabled','تعطيل':'Disable','تفعيل':'Enable',
+'الإعلانات والرعاة':'Ads & sponsors','النوع':'Type','إعلان':'Ad','راعٍ':'Sponsor','الاسم أو العنوان':'Name or title',
+'مسار الصورة داخل st-site-media':'Image path in st-site-media','رابط خارجي HTTPS (اختياري)':'External HTTPS link (optional)',
+'إضافة (غير مفعل)':'Add (inactive)','الإعلانات':'Ads','الرعاة':'Sponsors','لا توجد إعلانات.':'No ads yet.','لا يوجد رعاة.':'No sponsors yet.',
+'المتجر قيد التجهيز. عرض المنتجات متاح، والشراء هيتفعّل بعد اختبار الدفع ورفع الإيصال.':'Store is under preparation. Products are visible; checkout will open after payment and receipt testing.',
+'التعديلات تُحفظ على Supabase، ويجب التأكد من تفعيل صلاحيات الإدارة وقواعد الحماية.':'Changes are saved to Supabase. Ensure admin permissions and security rules are enabled.',
+'المشاهدون يمكنهم متابعة النتائج بدون حساب. الإدارة فقط تتطلب حسابًا مصرحًا به في Supabase.':'Visitors can view results without an account. Admin access requires an authorized Supabase account.',
+'النتائج متصلة بقاعدة بيانات ST أونلاين':'Results are connected to the ST online database',
+'منصة بطولات ST فقط':'ST tournaments platform',
+'لا توجد بطولات.':'No tournaments yet.','لا توجد فرق.':'No teams yet.','لا يوجد لاعبون.':'No players yet.',
+'الجولة':'Round','المجموعة':'Group','نهائي المجموعة':'Group final','نصف النهائي':'Semifinal','ربع النهائي':'Quarterfinal',
+'النهائي':'Final','مجموعات':'Groups','بانتظار النتيجة':'Awaiting result','تم التسجيل':'Result recorded',
+'تعديل':'Edit','حفظ':'Save','إلغاء':'Cancel','تأكيد':'Confirm','موافقة':'Approve','رفض':'Reject','تحديث':'Refresh',
+'ج.م':'EGP','العربية':'Arabic','English':'English'
+};
+const rules=[
+ [/^بطولة (\d+)$/,'$1 tournaments'],[/^(\d+) فريق$/,'$1 teams'],[/^(\d+) مباراة$/,'$1 matches'],
+ [/^المجموعة (.+)$/,'Group $1'],[/^الجولة (\d+)$/,'Round $1'],[/^(\d+) نقطة$/,'$1 points'],
+ [/^عدد الفرق: (\d+)$/,'Teams: $1'],[/^المباريات: (\d+)$/,'Matches: $1'],
+ [/^اللاعبون \((\d+)\)$/,'Players ($1)'],[/^الفرق \((\d+)\)$/,'Teams ($1)']
+];
+function translateValue(value){const trim=value.trim();if(!trim)return value;let out=D[trim];if(out===undefined){for(const [re,replacement] of rules){if(re.test(trim)){out=trim.replace(re,replacement);break}}}
+ if(out===undefined)return value;
+ return value.slice(0,value.indexOf(trim))+out+value.slice(value.indexOf(trim)+trim.length);
+}
+const originals=new WeakMap();
+function apply(){const en=stStore.language==='en';document.documentElement.lang=en?'en':'ar';document.documentElement.dir=en?'ltr':'rtl';
+ const select=document.getElementById('stGlobalLang');if(select&&select.value!==stStore.language)select.value=stStore.language;
+ const root=document.body;if(!root)return;
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){const parent=n.parentElement;if(!parent||parent.closest('script,style,textarea,option,code,pre,[contenteditable="true"]'))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});
+ let node;while(node=walker.nextNode()){const original=originals.get(node)??node.nodeValue;if(!originals.has(node))originals.set(node,original);const result=en?translateValue(original):original;if(node.nodeValue!==result)node.nodeValue=result;}
+ root.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el=>{if(!el.dataset.stOriginalPlaceholder)el.dataset.stOriginalPlaceholder=el.getAttribute('placeholder');const source=el.dataset.stOriginalPlaceholder;const result=en?translateValue(source):source;if(el.getAttribute('placeholder')!==result)el.setAttribute('placeholder',result)});
+ root.querySelectorAll('select option').forEach(el=>{if(!el.dataset.stOriginalLabel)el.dataset.stOriginalLabel=el.textContent;const source=el.dataset.stOriginalLabel;const result=en?translateValue(source):source;if(el.textContent!==result)el.textContent=result});
+}
+function installControl(){const bar=document.getElementById('stLanguageTop');if(!bar||document.getElementById('stGlobalLang'))return;const wrap=document.createElement('div');wrap.className='st-global-language';wrap.innerHTML='<label for="stGlobalLang" style="margin:0;color:#a8bed4">🌐</label><select id="stGlobalLang" aria-label="Website language"><option value="ar">العربية</option><option value="en">English</option></select>';bar.appendChild(wrap);wrap.querySelector('select').value=stStore.language;wrap.querySelector('select').addEventListener('change',e=>stSetLanguage(e.target.value));}
+let queued=false;function queue(){if(queued)return;queued=true;queueMicrotask(()=>{queued=false;installControl();apply()})}
+const originalSetter=stSetLanguage;stSetLanguage=function(v){originalSetter(v==='en'?'en':'ar');queue()};
+const originalRender=render;render=function(...args){const result=originalRender.apply(this,args);queue();return result};
+const observer=new MutationObserver(queue);observer.observe(document.body,{subtree:true,childList:true});
+installControl();queue();
+})();
+
+window.addEventListener('load',()=>{stLoadPublicSponsors();stLoadPublicAds();});
+</script></body></html>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071322"><title>ST Padel Tour | بطولات البادل</title><style>
+:root{--bg:#071322;--card:#10243a;--card2:#0c1c2e;--line:#27425d;--blue:#278bff;--white:#f7fbff;--muted:#a8bed4;--good:#34d399;--bad:#fb7185}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--white);font:15px/1.7 Tahoma,Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer;border:1px solid var(--line);background:#193450;color:white;border-radius:11px;padding:10px 16px}button:hover{border-color:var(--blue)}button.primary{background:var(--blue);border-color:var(--blue);font-weight:bold}button.danger{color:#fecdd3;border-color:#7f1d1d}button:disabled{opacity:.45;cursor:not-allowed}input,select{background:#071827;color:white;border:1px solid #34516e;border-radius:10px;padding:11px;width:100%;min-width:0}input:focus,select:focus{outline:2px solid var(--blue)}label{display:block;color:var(--muted);font-size:13px;margin-bottom:5px}.wrap{max-width:1180px;margin:auto;padding:0 18px}header{position:sticky;top:0;background:#071322f2;backdrop-filter:blur(14px);border-bottom:1px solid var(--line);z-index:4}.bar{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}.logo{font-size:26px;font-weight:900;white-space:nowrap;letter-spacing:1px}.logo span{color:var(--blue)}nav{display:flex;gap:6px;flex-wrap:wrap}nav button{padding:8px 12px;background:transparent;border:0}nav button.on{background:#163657;color:#70b6ff}.hero{padding:64px 0 35px;background:radial-gradient(ellipse at 15% 0,#134b86 0,transparent 48%)}.kicker{color:#78baff;letter-spacing:3px;font-weight:bold}.hero h1{font-size:clamp(32px,6vw,64px);margin:6px 0;line-height:1.25}.hero p{max-width:650px;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:28px 0}.stat,.card{border:1px solid var(--line);background:var(--card);border-radius:17px;padding:20px}.stat strong{display:block;font-size:30px;color:#71b8ff}.stat small,.muted{color:var(--muted)}main{padding:25px 0 75px}h2{font-size:25px;margin:0 0 18px}h3{margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.stack{display:grid;gap:15px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 20px}.toolbar input{max-width:310px}.pill{display:inline-block;background:#123b62;color:#94caff;padding:3px 10px;border-radius:20px;font-size:12px}.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.line{height:1px;background:var(--line);margin:15px 0}.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;min-width:620px;background:var(--card2)}th,td{text-align:right;padding:13px;border-bottom:1px solid var(--line)}th{color:#a8d2ff;background:#15304c}tr:last-child td{border:0}.formgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}.field{min-width:0}.field.wide{grid-column:1/-1}.adminnav{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:17px}.adminnav button.on{background:var(--blue)}.st-payment-tab{position:relative;display:inline-flex;align-items:center;gap:7px}.st-pending-badge{display:inline-flex;align-items:center;justify-content:center;min-width:23px;height:23px;padding:0 6px;border-radius:999px;background:#ef4444;color:#fff;font-size:12px;font-weight:900;line-height:1;box-shadow:0 0 0 2px #10243a}.note{background:#092b48;border:1px solid #246398;border-radius:12px;padding:12px 15px;color:#b9d9fa;margin:15px 0}.empty{color:var(--muted);padding:30px;text-align:center;border:1px dashed var(--line);border-radius:12px}.mini{font-size:12px;color:var(--muted)}.match{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card2);margin-bottom:9px}.score{font-weight:900;font-size:20px;color:#82c0ff;white-space:nowrap}.st-shop-img{width:100%;height:190px;object-fit:cover;border-radius:12px;background:#091727}.st-shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:15px}.st-form-actions{display:flex;gap:8px;flex-wrap:wrap}.st-card{min-width:0}.st-card p{overflow-wrap:anywhere}.footer{border-top:1px solid var(--line);padding:25px 0;color:var(--muted)}.hide{display:none!important}@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.bar{padding:12px 0}.hero{padding:35px 0 15px}nav{overflow-x:auto;max-width:100%}.match{flex-wrap:wrap}.stat strong{font-size:25px}}
+ .planbox{margin:15px 0;padding:18px;border:1px solid #315f87;border-radius:15px;background:#0b2136}.plansteps{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.planstep{border:1px solid #35628a;border-radius:12px;padding:12px;min-width:140px;flex:1;background:#102e4b}.planstep b{display:block;color:#9ed0ff}.planstep small{color:#b7c8da}.planlock{padding:20px;text-align:center;border:1px dashed #46769e;border-radius:12px;margin:15px 0}.publish{color:#a9f4d1}.draft{color:#ffd28a} 
+/* ST registration player name suggestions */
+.st-name-wrap{position:relative}.st-name-list{position:absolute;top:calc(100% + 4px);right:0;left:0;z-index:30;background:#10243a;border:1px solid #4b83b5;border-radius:12px;box-shadow:0 12px 30px #0009;max-height:240px;overflow:auto}.st-name-choice{display:flex;align-items:center;gap:12px;width:100%;text-align:right;border:0;border-bottom:1px solid #27425d;border-radius:0;background:transparent;padding:10px 12px}.st-name-choice:last-child{border-bottom:0}.st-name-choice:hover,.st-name-choice:focus{background:#1c456c}.st-name-choice-num{color:#8dc4ff;min-width:22px}.st-name-empty{padding:12px;color:#a8bed4;font-size:13px}
+
+/* ST Padel Tour ranking podium */
+.st-rank-heading{text-align:center;margin:16px 0 34px}.st-rank-heading h2{font-size:clamp(22px,3vw,34px);margin-bottom:4px}.st-rank-heading p{color:#a8bed4;margin:0}.st-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;align-items:end;margin:20px 0 35px;direction:ltr}.st-podium-card{position:relative;direction:rtl;text-align:center;padding:34px 12px 24px;min-width:0;border-radius:20px;background:linear-gradient(155deg,#19364f,#071322 80%);border:2px solid var(--podium-color);box-shadow:0 0 26px var(--podium-glow),inset 0 0 25px var(--podium-glow);}.st-podium-1{--podium-color:#ffd04b;--podium-glow:#d69a293d;min-height:330px;background:linear-gradient(155deg,#443313,#0b1727 75%)}.st-podium-2{--podium-color:#b8d7f5;--podium-glow:#9bbfe633;min-height:302px}.st-podium-3{--podium-color:#eaa56c;--podium-glow:#d7844738;min-height:292px}.st-podium-crown{position:absolute;top:-36px;left:0;right:0;font-size:42px;color:var(--podium-color);text-shadow:0 0 12px var(--podium-color)}.st-podium-avatar{width:122px;height:122px;border-radius:50%;border:4px solid var(--podium-color);padding:3px;margin:0 auto 12px;box-shadow:0 0 20px var(--podium-glow)}.st-podium-avatar>img,.st-podium-avatar>span{width:100%!important;height:100%!important;border-radius:50%;object-fit:cover}.st-podium-medal{color:var(--podium-color);font-weight:800;font-size:14px}.st-podium-name{font-weight:900;font-size:clamp(17px,2.4vw,26px);overflow-wrap:anywhere;margin:7px 0}.st-podium-id{font-size:11px;color:#a8bed4;direction:ltr}.st-podium-points{margin-top:12px;border-top:1px solid #ffffff26;padding-top:9px;color:var(--podium-color);font-weight:bold}.st-podium-points strong{font-size:clamp(24px,3vw,38px)}.st-rank-rest{margin:28px 0 12px;color:#a8d2ff}@media(max-width:700px){.st-podium{gap:7px}.st-podium-card{padding:24px 5px 13px;border-radius:13px;min-height:230px}.st-podium-1{min-height:252px}.st-podium-2{min-height:235px}.st-podium-3{min-height:225px}.st-podium-avatar{width:clamp(60px,17vw,95px);height:clamp(60px,17vw,95px);border-width:2px}.st-podium-crown{font-size:29px;top:-27px}.st-podium-medal{font-size:11px}.st-podium-name{font-size:13px}.st-podium-points strong{font-size:23px}.st-podium-id{font-size:9px}}
+.st-live-tag{display:inline-flex;align-items:center;gap:5px;background:#7f1d1d;color:#fff;border:1px solid #ef4444;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:900;animation:stpulse 1.8s infinite}@keyframes stpulse{50%{box-shadow:0 0 0 5px #ef444425}}.st-avatar-lightbox{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:55px 15px 25px;cursor:zoom-out}.st-avatar-lightbox img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:8px;box-shadow:0 12px 50px #0009;cursor:default}.st-avatar-close{position:absolute;top:12px;right:16px;border:0;background:#1d334c;color:#fff;border-radius:50%;width:42px;height:42px;font-size:29px;line-height:1;padding:0;z-index:1}.st-product-gallery{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}.st-product-thumb{width:160px;border:1px solid var(--line);padding:7px;border-radius:12px}.st-product-thumb img{width:100%;height:125px;object-fit:cover;border-radius:8px}.st-product-thumb .st-form-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}.st-product-thumb button{font-size:11px;padding:5px 7px}
+/* Public sponsors footer on every site page */
+.st-sponsors-public{margin:0 0 26px;padding:22px 12px 26px;border-bottom:1px solid var(--line);text-align:center}
+.st-sponsors-public[hidden]{display:none!important}
+.st-sponsors-public h3{font-size:19px;color:#dcecff;margin:0 0 17px}
+.st-sponsors-logos{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px}
+.st-sponsor-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-width:140px;max-width:210px;min-height:116px;padding:14px;background:#10243a;border:1px solid #315371;border-radius:14px;color:#fff;text-decoration:none}
+.st-sponsor-item img{display:block;width:155px;height:75px;max-width:100%;object-fit:contain}
+.st-sponsor-item span{font-size:12px;color:#c5d9ee;overflow-wrap:anywhere}
+a.st-sponsor-item:hover{border-color:#278bff;background:#173454}
+
+.st-ads-public{margin:0 0 26px;padding:20px 12px 26px;border-bottom:1px solid var(--line);text-align:center}.st-ads-public[hidden]{display:none!important}.st-ads-public h3{font-size:19px;color:#dcecff;margin:0 0 14px}.st-ads-frame{position:relative;max-width:820px;margin:auto;overflow:hidden;border-radius:16px;border:1px solid #315f87;background:#081b30}.st-ads-slide{display:none;text-decoration:none;color:#fff}.st-ads-slide.st-active{display:block}.st-ads-slide img{display:block;width:100%;max-height:300px;object-fit:contain;background:#091727}.st-ads-slide span{display:block;padding:7px 12px;font-weight:bold}.st-ads-dots{display:flex;justify-content:center;gap:8px;margin-top:11px}.st-ads-dots button{width:10px;height:10px;border-radius:50%;padding:0;background:#45637f;border:0}.st-ads-dots button.st-active{background:#53a4ff;width:23px;border-radius:10px}
+</style></head><body><div class="st-language-top" id="stLanguageTop"></div><header><div class="wrap bar"><a class="logo" href="index.html" aria-label="العودة للرئيسية وتحديث الصفحة" title="العودة للرئيسية وتحديث الصفحة" style="color:inherit;text-decoration:none;cursor:pointer">ST <span>PADEL</span> TOUR</a><nav id="nav"></nav></div></header><div class="wrap"><section id="stPublicAds" class="st-ads-public" aria-label="إعلانات ST Padel Tour" hidden></section></div><section class="hero"><div class="wrap"><div class="kicker">ST OFFICIAL TOURNAMENTS</div><h1>كل نقطة بتفرق.<br><span style="color:#4ca1ff">كل بطولة بتتحسب.</span></h1><p>المنصة الرسمية لبطولات ST: الفرق، المجموعات، المباريات، خروج المغلوب وتصنيف اللاعبين.</p><div class="stats" id="stats"></div></div></section><main class="wrap" id="app"></main><footer class="footer"><div class="wrap"><section id="stPublicSponsors" class="st-sponsors-public" aria-label="رعاة ST Padel Tour" hidden></section>© ST Padel Tour · منصة بطولات ST فقط <span style="float:left">النتائج متصلة بقاعدة بيانات ST أونلاين</span></div></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script>
+'use strict';
+/* ST visitor shortcut deterrent. Not a security boundary: browser tools remain accessible. */
+(function stVisitorShortcutGuard(){
+  const isAdmin = () => Boolean(adminSession);
+  document.addEventListener('contextmenu', event => {
+    if (!isAdmin()) event.preventDefault();
+  });
+  document.addEventListener('keydown', event => {
+    if (isAdmin()) return;
+    const key = String(event.key).toLowerCase();
+    const ctrlOrMeta = event.ctrlKey || event.metaKey;
+    const blocked = key === 'f12' ||
+      (ctrlOrMeta && event.shiftKey && ['i','j','c','k'].includes(key)) ||
+      (ctrlOrMeta && ['u'].includes(key));
+    if (blocked) { event.preventDefault(); event.stopPropagation(); }
+  }, true);
+})();
+const KEY='st_padel_final_v1';const SUPABASE_URL='https://gapbfzfmylotpchrqvwg.supabase.co',SUPABASE_KEY='sb_publishable_v7HcjvAOu63N3HAJxwv4hg_2ZXkAwwa';const cloud=window.supabase?.createClient(SUPABASE_URL,SUPABASE_KEY);let adminSession=null,cloudReady=false;const seed={players:[],teams:[],tournaments:[],matches:[],liveMatches:{},settings:{win:3,participation:1,round16:3,quarter:5,semi:8,champion:15,runnerUp:12},version:1};let db;try{db=JSON.parse(localStorage.getItem(KEY))||structuredClone(seed)}catch{db=structuredClone(seed)};for(const k of ['players','teams','tournaments','matches'])if(!Array.isArray(db[k]))db[k]=[];db.settings={...seed.settings,...db.settings};db.liveMatches=db.liveMatches&&typeof db.liveMatches==='object'&&!Array.isArray(db.liveMatches)?db.liveMatches:{};let page='home',adminTab='players',selectedTournament='',paymentRequests=[],requestLoading=false,adminPlayerPhones={},adminPhonesLoading=false,adminPhonesError='',submittedCode='',playerBans={},bansLoading=false;const $=id=>document.getElementById(id),uid=()=>crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let stateRevision=null,saveQueue=Promise.resolve(),pendingSaves=0,remoteRefreshPending=false;
+function save(){
+  if(!adminSession||stateRevision===null){alert('لا يمكن الحفظ قبل تحميل بيانات الإدارة من Supabase');return;}
+  const snapshot=structuredClone(db);
+  pendingSaves++;
+  render();
+  saveQueue=saveQueue.catch(()=>{}).then(async()=>{
+    if(stateRevision===null)throw Error('لم يتم تحميل إصدار البيانات');
+    const {data,error}=await cloud.rpc('st_admin_save_state',{p_data:snapshot,p_expected_revision:stateRevision});
+    if(error)throw error;
+    stateRevision=Number(data);
+    localStorage.setItem(KEY,JSON.stringify(snapshot));
+  }).catch(async error=>{
+    stateRevision=null;
+    alert('لم يتم حفظ التعديل على السيرفر: '+(error.message||error)+'\nسيتم إعادة تحميل البيانات الحالية.');
+    await loadCloud(true);
+  }).finally(async()=>{
+    pendingSaves--;
+    if(pendingSaves===0&&remoteRefreshPending){remoteRefreshPending=false;await loadCloud(true)}
+  });
+}
+function player(id){return db.players.find(x=>x.id===id)}function team(id){return db.teams.find(x=>x.id===id)}function tname(id){const t=team(id);return t? t.players.map(x=>player(x)?.name||'لاعب محذوف').join(' / ')+(t.withdrawn?' (منسحب)':''):'فريق غير موجود'}function tour(id){return db.tournaments.find(x=>x.id===id)}function fmtDate(d){return d?new Date(d+'T12:00:00').toLocaleDateString('ar-EG'):'—'}function ranking(){const result=new Map(db.players.map(p=>[p.id,{...p,points:0,wins:0,played:0,titles:0}]));for(const t of db.tournaments){const teams=db.teams.filter(x=>x.tid===t.id);const ms=db.matches.filter(m=>m.tid===t.id);const scores=new Map(teams.map(x=>[x.id,Number(db.settings.participation??1)]));for(const m of ms){const win=m.sa>m.sb?m.a:m.b;for(const id of [m.a,m.b]){const tm=team(id);for(const pid of tm?.players||[]){const r=result.get(pid);if(r)r.played++}}for(const pid of team(win)?.players||[]){const r=result.get(pid);if(r)r.wins++}if(m.stage!=='group'){const lose=win===m.a?m.b:m.a;let tier=Number(db.settings.round16??3);if(m.stage==='ST-Final')tier=Number(db.settings.runnerUp??12);else if(m.stage.startsWith('GK-')){const st=Number(m.stage.split('-')[1]),size=Number(t.koStart||16)/Math.pow(2,st);tier=size===2?Number(db.settings.runnerUp??12):size===4?Number(db.settings.semi??8):size===8?Number(db.settings.quarter??5):Number(db.settings.round16??3);}else if(m.stage.includes('-2'))tier=Number(db.settings.semi??8);else if(m.stage.includes('-1'))tier=Number(db.settings.quarter??5);scores.set(lose,Math.max(scores.get(lose)||1,tier))}}// Award ranking points on reaching each knockout round, even before playing its match.
+if(isFair24(t)){
+ const bracket=fair24Bracket(t.id);
+ for(const round of bracket.rounds||[]){
+  for(const fixture of round){
+   const size=Number(t.koStart||16)/Math.pow(2,Number(fixture.stage.split('-')[1]));
+   const points=size===16?Number(db.settings.round16??3):size===8?Number(db.settings.quarter??5):size===4?Number(db.settings.semi??8):0;
+   if(points)for(const id of [fixture.a,fixture.b])scores.set(id,Math.max(scores.get(id)||1,points));
+  }
+ }
+}
+if(t.runnerUp)scores.set(t.runnerUp,Number(db.settings.runnerUp??12));if(t.champion)scores.set(t.champion,Number(db.settings.champion??15));for(const tm of teams)for(const pid of tm.players){const r=result.get(pid);if(r){r.points+=scores.get(tm.id)??Number(db.settings.participation??1);if(t.champion===tm.id)r.titles++}}}return [...result.values()].sort((a,b)=>b.points-a.points||b.wins-a.wins||a.name.localeCompare(b.name,'ar'))}function standings(tid,group){const ids=db.teams.filter(t=>t.tid===tid&&t.group===group).map(t=>t.id);const r=new Map(ids.map(id=>[id,{id,played:0,w:0,l:0,gf:0,ga:0,points:0}]));for(const m of db.matches.filter(m=>m.tid===tid&&m.stage==='group')){if(!r.has(m.a)||!r.has(m.b))continue;for(const [id,own,opp] of [[m.a,m.sa,m.sb],[m.b,m.sb,m.sa]]){let x=r.get(id);x.played++;x.gf+=own;x.ga+=opp;if(own>opp){x.w++;x.points+=3}else x.l++}}return [...r.values()].sort((a,b)=>{let d=b.points-a.points||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf;if(d)return d;const tied=[...r.values()].filter(x=>x.points===a.points&&x.gf-x.ga===a.gf-a.ga&&x.gf===a.gf);if(tied.length===2){const direct=db.matches.find(m=>m.tid===tid&&m.stage==='group'&&((m.a===a.id&&m.b===b.id)||(m.a===b.id&&m.b===a.id)));if(direct)return (direct.a===a.id?direct.sa>direct.sb:direct.sb>direct.sa)?-1:1}return tname(a.id).localeCompare(tname(b.id),'ar')})}function btns(){const tabs=[['home','الرئيسية'],['tournaments','البطولات'],['register','التسجيل'],['matches','النتائج'],['ranking','التصنيف'],['store','المتجر'],['track','متابعة طلب'],...(adminSession?[['admin','الإدارة']]:[])];const pending=paymentRequests.filter(r=>r.status==='pending').length;$('nav').innerHTML=tabs.map(([k,v])=>`<button class="${page===k?'on':''} ${k==='admin'?'st-payment-tab':''}" onclick="go('${k}')">${v}${k==='admin'&&pending?`<span class="st-pending-badge" aria-label="${pending} طلب دفع معلق">${pending>99?'99+':pending}</span>`:''}</button>`).join('')}function go(p){if(p==='admin'&&!adminSession&&location.hash!=='#admin'){page='home';render();return;}page=p;render();window.scrollTo({top:0,behavior:'smooth'})}function stat(n,s){return `<div class="stat"><strong>${n}</strong><small>${s}</small></div>`}let stLastRenderedView='';
+function stCaptureStoreDraft(){
+  if(stLastRenderedView!=='admin:storeproducts'||page!=='admin'||adminTab!=='storeproducts')return null;
+  const form=document.querySelector('#app form[onsubmit="stAddProduct(event)"]');
+  if(!form)return null;
+  const controls=[...form.querySelectorAll('input,textarea,select')];
+  const values=controls.filter(el=>el.id&&el.type!=='file').map(el=>({id:el.id,value:el.value,checked:el.checked}));
+  const file= document.getElementById('stPImages');
+  const focused=document.activeElement;
+  const focusId=form.contains(focused)?focused.id:null;
+  const selection=focusId&&typeof focused.selectionStart==='number'?[focused.selectionStart,focused.selectionEnd]:null;
+  return {values,file,focusId,selection};
+}
+function stRestoreStoreDraft(draft){
+  if(!draft)return;
+  for(const x of draft.values){const el=document.getElementById(x.id);if(!el)continue;el.value=x.value;if(el.type==='checkbox'||el.type==='radio')el.checked=x.checked;}
+  const fresh=document.getElementById('stPImages');
+  if(fresh&&draft.file&&fresh!==draft.file)fresh.replaceWith(draft.file);
+  if(draft.focusId){const el=document.getElementById(draft.focusId);if(el){el.focus({preventScroll:true});if(draft.selection&&typeof el.setSelectionRange==='function')try{el.setSelectionRange(...draft.selection)}catch(_){}}}
+}
+/* Preserve sponsor/ad form inputs across Supabase-triggered re-renders. */
+function stCaptureMediaDraft(){
+ if(page!=='admin'||adminTab!=='storeads')return null;
+ const form=document.querySelector('#app form[onsubmit="stAddMedia(event)"]');
+ if(!form)return null;
+ const fields=[...form.querySelectorAll('input,select,textarea')].filter(el=>el.id).map(el=>({id:el.id,value:el.value}));
+ const focused=document.activeElement;
+ const focusId=form.contains(focused)?focused.id:null;
+ let selection=null;
+ if(focusId&&typeof focused.selectionStart==='number')selection=[focused.selectionStart,focused.selectionEnd];
+ return {fields,focusId,selection,fileInput:document.getElementById('stMediaFile')};
+}
+function stRestoreMediaDraft(draft){
+ if(!draft||page!=='admin'||adminTab!=='storeads')return;
+ for(const f of draft.fields){const el=document.getElementById(f.id);if(el&&el.type!=='file')el.value=f.value;}
+ const fileInput=document.getElementById('stMediaFile');if(fileInput&&draft.fileInput&&fileInput!==draft.fileInput)fileInput.replaceWith(draft.fileInput);
+ if(draft.fileInput?.files?.length)stMediaFileChanged();
+ if(draft.focusId){const el=document.getElementById(draft.focusId);if(el){el.focus({preventScroll:true});if(draft.selection&&typeof el.setSelectionRange==='function')try{el.setSelectionRange(...draft.selection)}catch(_){}}}
+}
 function render(){const stDraft=stCaptureStoreDraft(),stMediaDraft=stCaptureMediaDraft();btns();$('stats').innerHTML=stat(db.tournaments.length,'بطولة')+stat(db.players.length,'لاعب')+stat(db.teams.length,'فريق')+stat(db.matches.length,'نتيجة معتمدة');$('app').innerHTML=page==='home'?home():page==='register'?registrationPage():page==='tournaments'?tournaments():page==='matches'?matches():page==='ranking'?rankings():page==='store'?stStorePage():page==='track'?stTrackPage():adminSession?admin():loginView();stRestoreStoreDraft(stDraft);stRestoreMediaDraft(stMediaDraft);stLastRenderedView=page==='admin'?'admin:'+adminTab:page;if(page==='store')stLoadStore();if(page==='admin'&&adminSession&&['storeproducts','storeorders','storesettings','storeads'].includes(adminTab))stLoadAdminTab(adminTab);if(page==='admin'&&adminSession&&adminTab==='results')syncTeams();if(page==='admin'&&adminSession&&adminTab==='champions')syncChampions();}function home(){return `<div class="toolbar"><h2>بطولات ST</h2><button class="primary" onclick="go('tournaments')">عرض كل البطولات ←</button></div>${db.tournaments.length?`<div class="grid">${db.tournaments.slice(-3).reverse().map(t=>tourCard(t)).join('')}</div>`:`<div class="empty">لسه مفيش بطولات مسجلة. افتح لوحة الإدارة لإضافة أول بطولة.</div>`}<div class="line"></div><div class="toolbar"><h2>أفضل اللاعبين</h2><button onclick="go('ranking')">التصنيف الكامل</button></div>${rankingBoard(ranking())}`}function tourCard(t){const count=db.teams.filter(x=>x.tid===t.id).length;return `<article class="card"><div class="row"><span class="pill">${esc(t.status||'مجدولة')}</span><small class="muted">${fmtDate(t.date)}</small></div><h3 style="margin-top:16px">${esc(t.name)}</h3><p class="muted">${count} فريق · ${db.matches.filter(x=>x.tid===t.id).length} مباراة</p><button onclick="selectedTournament='${t.id}';go('tournaments')">تفاصيل البطولة ←</button> <button class="primary" onclick="selectedTournament='${t.id}';go('register')">اشترك الآن</button></article>`}function tournaments(){let t=tour(selectedTournament);if(!t)return `<div class="toolbar"><h2>بطولات ST</h2></div>${db.tournaments.length?`<div class="grid">${db.tournaments.map(tourCard).join('')}</div>`:'<div class="empty">لم تتم إضافة بطولات بعد.</div>'}`;let groups=[...new Set(db.teams.filter(x=>x.tid===t.id).map(x=>x.group).filter(Boolean))].sort();const f=formatOf(t);return `<div class="toolbar"><h2>${esc(t.name)}</h2><button onclick="selectedTournament='';render()">← كل البطولات</button></div><div class="card"><div class="row"><span class="pill">${esc(t.status)}</span><span class="muted">${fmtDate(t.date)}</span></div><p>نظام البطولة: <b>${esc(FORMATS[f]||FORMATS.st30)}</b></p><p>عدد الفرق: ${db.teams.filter(x=>x.tid===t.id).length} · المباريات: ${db.matches.filter(x=>x.tid===t.id).length}</p>${t.champion?`<p>🏆 البطل: <b>${esc(tname(t.champion))}</b></p>`:''}${t.runnerUp?`<p>🥈 الوصيف: <b>${esc(tname(t.runnerUp))}</b></p>`:''}</div><p><button class="primary" onclick="selectedTournament='${t.id}';go('register')">سجل فريقك في البطولة</button></p>${publicDraw(t)?`<div class="note">${drawPublished(t)?'القرعة منشورة للجمهور':'معاينة إدارية — القرعة غير منشورة'}</div>${formatPlan(t)}<h2 style="margin-top:30px">ترتيب المجموعات</h2>${['round_robin','league','swiss'].includes(f)?standTable(leagueStandings(t.id)):groups.length?groups.map(g=>`<h3>المجموعة ${esc(g)}</h3>${standTable(standings(t.id,g))}`).join(''):'<div class="empty">أضف الفرق وحدد مجموعاتها من لوحة الإدارة.</div>'}<h2 style="margin-top:30px">جدول مباريات المجموعات</h2>${fixtureList(t.id)}<h2 style="margin-top:30px">خروج المغلوب</h2>${knockoutView(t.id)}<h2 style="margin-top:30px">مباريات البطولة</h2>${matchList(db.matches.filter(x=>x.tid===t.id))}`:`<div class="planlock"><h3>🔒 القرعة لم تُنشر بعد</h3><p class="muted">تفاصيل المواجهات وجدول المباريات ستظهر بعد اعتماد الإدارة ونشر القرعة.</p></div>`}` }function standTable(rows){return `<div class="tablewrap"><table><thead><tr><th>#</th><th>الفريق</th><th>لعب</th><th>فوز</th><th>خسارة</th><th>له</th><th>عليه</th><th>الفارق</th><th>النقاط</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(tname(r.id))}</td><td>${r.played}</td><td>${r.w}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gf-r.ga}</td><td><b>${r.points}</b></td></tr>`).join('')}</tbody></table></div>`}const FORMATS={st30:'ST 30 — مجموعتان ونهائي',round_robin:'دوري كامل — كل فريق ضد الجميع',single_elimination:'خروج مغلوب مباشر',groups_knockout:'مجموعات ثم خروج مغلوب',double_elimination:'خروج مغلوب بفرصتين (مسار فائزين وخاسرين)',swiss:'النظام السويسري — جولات متتالية',league:'دوري ذهاب وإياب'};
 
  function bracketSize(n){let k=2;while(k<Math.max(2,n))k*=2;return k}
