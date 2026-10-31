@@ -1870,10 +1870,6 @@ window.addEventListener('load',()=>{stLoadPublicSponsors();stLoadPublicAds();});
 #stPublicAds .st-ads-frame{touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab}
 #stPublicAds .st-ads-frame:active{cursor:grabbing}
 #stPublicAds .st-ads-slide img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
-#stPublicAds .st-ad-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:40px;height:46px;padding:0;display:flex;align-items:center;justify-content:center;border:1px solid #8ebeff80;background:#071322b8;color:white;font-size:28px;border-radius:12px;cursor:pointer}
-#stPublicAds .st-ad-prev{right:9px}#stPublicAds .st-ad-next{left:9px}
-#stPublicAds .st-ad-arrow:hover{background:#1762a8}
-@media(max-width:600px){#stPublicAds .st-ad-arrow{width:32px;height:38px;font-size:22px}}
 </style>
 <script>
 /* Swipe directly on the ad image; keep existing 5-second rotation and ad links. */
@@ -1882,7 +1878,7 @@ window.addEventListener('load',()=>{stLoadPublicSponsors();stLoadPublicAds();});
  let start=null,suppressClick=false;
  const change=(direction)=>{if(typeof stShowPublicAd==='function'&&typeof stPublicAdsIndex==='number')stShowPublicAd(stPublicAdsIndex+direction)};
  host.addEventListener('pointerdown',e=>{
-  if(!e.target.closest('.st-ads-frame')||e.target.closest('.st-ad-arrow'))return;
+  if(!e.target.closest('.st-ads-frame'))return;
   if(e.pointerType==='mouse'&&e.button!==0)return;
   start={x:e.clientX,y:e.clientY,id:e.pointerId};
  },{passive:true});
@@ -1896,13 +1892,7 @@ window.addEventListener('load',()=>{stLoadPublicSponsors();stLoadPublicAds();});
  },{passive:true});
  host.addEventListener('pointercancel',()=>{start=null});
  host.addEventListener('click',e=>{if(suppressClick&&e.target.closest('.st-ads-slide')){e.preventDefault();e.stopPropagation();suppressClick=false}},true);
- host.addEventListener('click',e=>{const arrow=e.target.closest('.st-ad-arrow');if(arrow){e.preventDefault();change(arrow.classList.contains('st-ad-next')?1:-1)} });
- const observer=new MutationObserver(()=>{
-  const frame=host.querySelector('.st-ads-frame');if(!frame||frame.querySelector('.st-ad-arrow'))return;
-  if(host.querySelectorAll('.st-ads-slide').length<2)return;
-  frame.insertAdjacentHTML('beforeend','<button type="button" class="st-ad-arrow st-ad-prev" aria-label="الإعلان السابق">&#8250;</button><button type="button" class="st-ad-arrow st-ad-next" aria-label="الإعلان التالي">&#8249;</button>');
- });
- observer.observe(host,{childList:true,subtree:false});
+
 })();
 </script>
 </body></html>
